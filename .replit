@@ -11,11 +11,15 @@ localPort = 3001
 externalPort = 3001
 
 [[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
 localPort = 5173
 externalPort = 80
 
 [workflows]
-runButton = "Start Vault AI"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Start Vault AI"
@@ -39,6 +43,27 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd src/webapp && npm install"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Vault AI Landing"
+
+[[workflows.workflow]]
+name = "Vault AI Landing"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd src/landing && npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [deployment]
 run = ["sh", "-c", "cd src/webapp && npm run start"]
