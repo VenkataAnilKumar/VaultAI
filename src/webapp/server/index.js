@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({
-  origin: ['http://localhost:5173', `https://${process.env.REPLIT_DEV_DOMAIN}`, /\.replit\.dev$/, /\.repl\.co$/],
+  origin: true,
   credentials: true
 }));
 
@@ -18,12 +18,18 @@ const filesRoutes = require('./routes/files');
 const modelsRoutes = require('./routes/models');
 const searchRoutes = require('./routes/search');
 const generateRoutes = require('./routes/generate');
+const agentsRoutes = require('./routes/agents');
+const connectorsRoutes = require('./routes/connectors');
+const mcpRoutes = require('./routes/mcp');
 
 app.use('/api/chat', chatRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/models', modelsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/generate', generateRoutes);
+app.use('/api/agents', agentsRoutes);
+app.use('/api/connectors', connectorsRoutes);
+app.use('/api/mcp', mcpRoutes);
 
 if (process.env.NODE_ENV === 'production') {
   const clientBuild = path.join(__dirname, '..', 'client', 'dist');
@@ -45,7 +51,7 @@ async function startup() {
     const connected = await ollama.isConnected();
     if (connected) {
       const models = await ollama.listModels();
-      console.log(`Ollama connected. Available models: ${models.map(m => m.name).join(', ') || 'none'}`);
+      console.log(`Ollama connected. Models: ${models.map(m => m.name).join(', ') || 'none'}`);
     } else {
       console.warn('Ollama not connected at startup. Start Ollama to enable AI features.');
     }

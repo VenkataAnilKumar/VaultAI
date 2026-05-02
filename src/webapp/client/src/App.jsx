@@ -1,15 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { LockIcon, CpuIcon, FolderOpenIcon } from 'lucide-react';
+import { LockIcon, FolderOpenIcon, MessageSquareIcon, SparklesIcon, PlugIcon, ServerIcon } from 'lucide-react';
 import FileBrowser from './components/FileBrowser.jsx';
 import Chat from './components/Chat.jsx';
 import GeneratePanel from './components/GeneratePanel.jsx';
 import ModelPanel from './components/ModelPanel.jsx';
 import StatusBar from './components/StatusBar.jsx';
+import ConnectorsPanel from './components/connectors/ConnectorsPanel.jsx';
+import MCPPanel from './components/mcp/MCPPanel.jsx';
 import useStore from './store/useStore.js';
 import { checkOllamaStatus, getModels } from './api/client.js';
 
+const NAV_ITEMS = [
+  { id: 'chat', label: 'Chat', icon: MessageSquareIcon },
+  { id: 'generate', label: 'Generate', icon: SparklesIcon },
+  { id: 'connectors', label: 'Connectors', icon: PlugIcon },
+  { id: 'mcp', label: 'MCP', icon: ServerIcon }
+];
+
 export default function App() {
-  const { activeTab, setActiveTab, setOllamaConnected, setModels, setWorkingDirectory, workingDirectory } = useStore();
+  const { activeTab, setActiveTab, setOllamaConnected, setModels, setWorkingDirectory } = useStore();
   const [showFileBrowser, setShowFileBrowser] = useState(true);
 
   useEffect(() => {
@@ -25,15 +34,13 @@ export default function App() {
         setOllamaConnected(false);
       }
 
-      try {
-        const res = await fetch('/api/files?path=/home/runner');
-        if (res.ok) {
-          setWorkingDirectory('/home/runner');
-        } else {
-          setWorkingDirectory('/tmp');
-        }
-      } catch {
-        setWorkingDirectory('/tmp');
+      // Determine working directory
+      for (const dir of ['/home/runner', process.env.HOME, '/tmp']) {
+        if (!dir) continue;
+        try {
+          const r = await fetch(`/api/files?path=${encodeURIComponent(dir)}`);
+          if (r.ok) { setWorkingDirectory(dir); break; }
+        } catch {}
       }
     }
     init();
@@ -50,54 +57,62 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const renderPanel = () => {
+    switch (activeTab) {
+      case 'chat': return <Chat />;
+      case 'generate': return <GeneratePanel />;
+      case 'connectors': return <ConnectorsPanel />;
+      case 'mcp': return <MCPPanel />;
+      default: return <Chat />;
+    }
+  };
+
   return (
     <div className="flex h-screen bg-white overflow-hidden">
-      {showFileBrowser && (
-        <div className="w-70 border-r border-gray-200 flex flex-col flex-shrink-0" style={{ width: 280 }}>
+      {/* Left sidebar — file browser */}
+      {showFileBrowser && (activeTab === 'chat' || activeTab === 'generate') && (
+        <div className="border-r border-gray-200 flex flex-col flex-shrink-0" style={{ width: 260 }}>
           <FileBrowser />
         </div>
       )}
 
+      {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
+        {/* Header */}
+        <header className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-white flex-shrink-0">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowFileBrowser(v => !v)}
-              className="p-1.5 rounded hover:bg-gray-100 text-gray-500"
-              title="Toggle file browser"
-            >
-              <FolderOpenIcon size={18} />
-            </button>
+            {(activeTab === 'chat' || activeTab === 'generate') && (
+              <button onClick={() => setShowFileBrowser(v => !v)}
+                className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                title="Toggle file browser">
+                <FolderOpenIcon size={17} />
+              </button>
+            )}
             <div className="flex items-center gap-2">
-              <LockIcon size={18} className="text-blue-600" />
-              <span className="font-semibold text-gray-900">Vault AI</span>
+              <LockIcon size={17} className="text-blue-600" />
+              <span className="font-semibold text-gray-900 text-sm">Vault AI</span>
             </div>
-            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-              <LockIcon size={10} />
-              Privacy First
-            </span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex border border-gray-200 rounded-lg overflow-hidden">
-              <button
-                onClick={() => setActiveTab('chat')}
-                className={`px-3 py-1.5 text-sm font-medium transition-colors ${activeTab === 'chat' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
-              >
-                Chat
+
+          {/* Navigation tabs */}
+          <nav className="flex border border-gray-200 rounded-xl overflow-hidden">
+            {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+                  activeTab === id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+                }`}>
+                <Icon size={13} />
+                <span className="hidden sm:inline">{label}</span>
               </button>
-              <button
-                onClick={() => setActiveTab('generate')}
-                className={`px-3 py-1.5 text-sm font-medium transition-colors ${activeTab === 'generate' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
-              >
-                Generate
-              </button>
-            </div>
-            <ModelPanel />
-          </div>
+            ))}
+          </nav>
+
+          <ModelPanel />
         </header>
 
+        {/* Content */}
         <div className="flex-1 overflow-hidden">
-          {activeTab === 'chat' ? <Chat /> : <GeneratePanel />}
+          {renderPanel()}
         </div>
 
         <StatusBar />
