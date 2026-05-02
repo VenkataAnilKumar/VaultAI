@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 class OllamaClient {
-  constructor(baseUrl = 'http://localhost:11434') {
+  constructor(baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434') {
     this.baseUrl = baseUrl;
     this.client = axios.create({ baseURL: baseUrl, timeout: 120000 });
   }
