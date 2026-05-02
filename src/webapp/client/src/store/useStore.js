@@ -24,6 +24,9 @@ const useStore = create((set) => ({
   externalMCPServers: [],
   externalMCPTools: [],
 
+  // Demo mode (Phase 5 — hackathon)
+  demoMode: false,
+
   // Chat actions
   addMessage: (message) =>
     set((state) => ({
@@ -54,6 +57,9 @@ const useStore = create((set) => ({
   setMCPServerRunning: (val) => set({ mcpServerRunning: val }),
   setExternalMCPServers: (servers) => set({ externalMCPServers: servers }),
   setExternalMCPTools: (tools) => set({ externalMCPTools: tools }),
+
+  // Demo mode actions
+  setDemoMode: (on) => set({ demoMode: on }),
 }));
 
 export default useStore;

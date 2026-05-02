@@ -48,7 +48,8 @@ function ActionButton({ icon: Icon, label, active, onClick, disabled }) {
 
 // ── Single-doc panel ─────────────────────────────────────────
 function SingleDocPanel({ doc, onBack }) {
-  const { ollamaConnected } = useStore();
+  const { ollamaConnected, demoMode } = useStore();
+  const aiEnabled = ollamaConnected || demoMode;
   const [action, setAction]   = useState('query');
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null);
@@ -206,12 +207,12 @@ function SingleDocPanel({ doc, onBack }) {
 
       <div className="doc-action-bar">
         <ActionButton icon={MessageSquareIcon} label="Q&A"       active={action === 'query'}     onClick={() => runAction('query')} />
-        <ActionButton icon={AlignLeftIcon}     label="TL;DR"     active={action === 'tldr'}      onClick={() => runAction('tldr')} disabled={!ollamaConnected} />
-        <ActionButton icon={ListIcon}          label="Key Points" active={action === 'keypoints'} onClick={() => runAction('keypoints')} disabled={!ollamaConnected} />
-        <ActionButton icon={BookOpenIcon}      label="Full"       active={action === 'full'}      onClick={() => runAction('full')} disabled={!ollamaConnected} />
-        <ActionButton icon={SearchIcon}        label="Extract"    active={action === 'extract'}   onClick={() => runAction('extract')} disabled={!ollamaConnected} />
-        <ActionButton icon={TagIcon}           label="Classify"   active={action === 'classify'}  onClick={() => runAction('classify')} disabled={!ollamaConnected} />
-        <ActionButton icon={ShieldAlertIcon}   label="PII Scan"   active={action === 'pii'}       onClick={() => runAction('pii')} disabled={!ollamaConnected} />
+        <ActionButton icon={AlignLeftIcon}     label="TL;DR"     active={action === 'tldr'}      onClick={() => runAction('tldr')} disabled={!aiEnabled} />
+        <ActionButton icon={ListIcon}          label="Key Points" active={action === 'keypoints'} onClick={() => runAction('keypoints')} disabled={!aiEnabled} />
+        <ActionButton icon={BookOpenIcon}      label="Full"       active={action === 'full'}      onClick={() => runAction('full')} disabled={!aiEnabled} />
+        <ActionButton icon={SearchIcon}        label="Extract"    active={action === 'extract'}   onClick={() => runAction('extract')} disabled={!aiEnabled} />
+        <ActionButton icon={TagIcon}           label="Classify"   active={action === 'classify'}  onClick={() => runAction('classify')} disabled={!aiEnabled} />
+        <ActionButton icon={ShieldAlertIcon}   label="PII Scan"   active={action === 'pii'}       onClick={() => runAction('pii')} disabled={!aiEnabled} />
       </div>
 
       {error && (
@@ -261,11 +262,11 @@ function SingleDocPanel({ doc, onBack }) {
               value={question}
               onChange={e => setQuestion(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAsk()}
-              placeholder={ollamaConnected ? `Ask about ${doc.fileName}...` : 'Start Ollama to ask questions'}
-              disabled={loading || !ollamaConnected}
+              placeholder={aiEnabled ? `Ask about ${doc.fileName}...` : 'Start Ollama or enable Demo Mode'}
+              disabled={loading || !aiEnabled}
               className="doc-question-input"
             />
-            <button onClick={handleAsk} disabled={!question.trim() || loading || !ollamaConnected} className="doc-send-btn">
+            <button onClick={handleAsk} disabled={!question.trim() || loading || !aiEnabled} className="doc-send-btn">
               <SendIcon size={14} />
             </button>
           </div>
@@ -280,7 +281,8 @@ function SingleDocPanel({ doc, onBack }) {
 
 // ── Multi-doc Q&A panel ──────────────────────────────────────
 function MultiDocPanel({ documents }) {
-  const { ollamaConnected } = useStore();
+  const { ollamaConnected, demoMode } = useStore();
+  const aiEnabled = ollamaConnected || demoMode;
   const [question, setQuestion]   = useState('');
   const [loading, setLoading]     = useState(false);
   const [qHistory, setQHistory]   = useState([]);
@@ -388,11 +390,11 @@ function MultiDocPanel({ documents }) {
             value={question}
             onChange={e => setQuestion(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleAsk()}
-            placeholder={ollamaConnected ? 'Ask across your documents...' : 'Start Ollama to ask questions'}
-            disabled={loading || !ollamaConnected}
+            placeholder={aiEnabled ? 'Ask across your documents...' : 'Start Ollama or enable Demo Mode'}
+            disabled={loading || !aiEnabled}
             className="doc-question-input"
           />
-          <button onClick={handleAsk} disabled={!question.trim() || loading || !ollamaConnected} className="doc-send-btn">
+          <button onClick={handleAsk} disabled={!question.trim() || loading || !aiEnabled} className="doc-send-btn">
             <SendIcon size={14} />
           </button>
         </div>
@@ -403,13 +405,14 @@ function MultiDocPanel({ documents }) {
 
 // ── Organize panel ────────────────────────────────────────────
 function OrganizePanel({ documents }) {
-  const { ollamaConnected } = useStore();
+  const { ollamaConnected, demoMode } = useStore();
+  const aiEnabled = ollamaConnected || demoMode;
   const [loading, setLoading]     = useState(false);
   const [result, setResult]       = useState(null);
   const [error, setError]         = useState(null);
 
   async function handleOrganize() {
-    if (!ollamaConnected || !documents.length) return;
+    if (!aiEnabled || !documents.length) return;
     setLoading(true);
     setError(null);
     setResult(null);
@@ -444,12 +447,12 @@ function OrganizePanel({ documents }) {
           </div>
           <button
             onClick={handleOrganize}
-            disabled={!ollamaConnected || !documents.length || loading}
+            disabled={!aiEnabled || !documents.length || loading}
             className="doc-action-primary"
           >
             <FolderSyncIcon size={14} /> Suggest Organization
           </button>
-          {!ollamaConnected && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 8 }}>Requires Ollama</div>}
+          {!aiEnabled && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 8 }}>Requires Ollama or Demo Mode</div>}
         </div>
       )}
 

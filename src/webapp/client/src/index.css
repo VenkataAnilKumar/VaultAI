@@ -153,6 +153,24 @@ body {
   margin-top: auto;
 }
 
+.demo-launch-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  border: 1px dashed #A5B4FC;
+  background: #EEF2FF;
+  color: #4338CA;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.demo-launch-btn:hover { background: #E0E7FF; }
+
 .model-status {
   display: flex;
   align-items: center;

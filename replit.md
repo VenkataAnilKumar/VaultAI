@@ -46,8 +46,8 @@ src/webapp/
 │       │   ├── ConfirmDialog.jsx
 │       │   ├── SkillsPanel.jsx    # 12 built-in + custom skills (persistent)
 │       │   └── StatusBar.jsx
-│       ├── store/       # Zustand state (useStore.js)
-│       ├── api/         # Axios API client (client.js) — all routes
+│       ├── store/       # Zustand state (useStore.js) — includes demoMode flag
+│       ├── api/         # client.js (Axios + demo adapter) + demoData.js (mock responses)
 │       ├── App.jsx      # Nav: Chat | Documents | Research | Skills | Generate | Connectors | MCP
 │       └── main.jsx
 └── server/

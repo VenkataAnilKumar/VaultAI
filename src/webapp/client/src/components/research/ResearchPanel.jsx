@@ -150,7 +150,7 @@ export default function ResearchPanel() {
 
       {mode === 'deep' && (
         <div className="research-deep-info">
-          Deep Research breaks your question into sub-questions, searches the web for each, then uses AI to synthesize a comprehensive report. Requires Ollama.
+          Deep Research breaks your question into sub-questions, searches the web for each, then uses AI to synthesize a comprehensive report. Works in Demo Mode.
         </div>
       )}
 

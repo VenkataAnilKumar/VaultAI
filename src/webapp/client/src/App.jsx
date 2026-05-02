@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   LockIcon, MessageSquareIcon, SparklesIcon, PlugIcon, ServerIcon,
   PlusIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, CpuIcon,
-  TrashIcon, SettingsIcon, ZapIcon, FileTextIcon, GlobeIcon
+  TrashIcon, SettingsIcon, ZapIcon, FileTextIcon, GlobeIcon, PlayIcon
 } from 'lucide-react';
 import FileBrowser from './components/FileBrowser.jsx';
 import Chat from './components/Chat.jsx';
@@ -40,7 +40,7 @@ export default function App() {
   const {
     activeTab, setActiveTab, setOllamaConnected, setModels,
     setWorkingDirectory, ollamaConnected, availableModels,
-    clearMessages, messages,
+    clearMessages, messages, demoMode, setDemoMode
   } = useStore();
 
   const { theme, setTheme } = useTheme();
@@ -69,6 +69,7 @@ export default function App() {
     }
     init();
     const iv = setInterval(async () => {
+      if (demoMode) return; // don't ping Ollama in demo mode
       try { const s = await checkOllamaStatus(); setOllamaConnected(s.connected); }
       catch { setOllamaConnected(false); }
     }, 30000);
@@ -107,6 +108,12 @@ export default function App() {
     setActiveTab('chat');
     clearMessages();
     setActiveSessionId(null);
+  }
+
+  function activateDemoMode() {
+    setDemoMode(true);
+    setOllamaConnected(true);
+    setModels([{ name: 'llama3.2 (demo)' }, { name: 'nomic-embed-text (demo)' }]);
   }
 
   const renderPanel = () => {
@@ -167,6 +174,13 @@ export default function App() {
           )}
 
           <div className="sidebar-footer">
+            {/* Demo mode quick-launch in sidebar */}
+            {!demoMode && !ollamaConnected && (
+              <button className="demo-launch-btn" onClick={activateDemoMode}>
+                <PlayIcon size={12} /> Try Demo Mode
+              </button>
+            )}
+
             <div className="settings-anchor">
               <button className={`nav-item ${settingsOpen ? 'nav-item-active' : ''}`}
                 onClick={() => setSettingsOpen(v => !v)}>
@@ -176,14 +190,13 @@ export default function App() {
                 <SettingsPanel theme={theme} setTheme={setTheme} onClose={() => setSettingsOpen(false)} />
               )}
             </div>
+
             <div className="model-status">
-              <span className={`status-dot ${ollamaConnected ? 'dot-green' : 'dot-red'}`} />
-              <CpuIcon size={12} />
-              <span>
-                {ollamaConnected
-                  ? `${availableModels.length} model${availableModels.length !== 1 ? 's' : ''} · Ollama`
-                  : 'Ollama offline'}
-              </span>
+              {demoMode
+                ? <><span className="status-dot" style={{ background: '#f59e0b' }} /><ZapIcon size={12} /><span>Demo mode active</span></>
+                : <><span className={`status-dot ${ollamaConnected ? 'dot-green' : 'dot-red'}`} /><CpuIcon size={12} />
+                  <span>{ollamaConnected ? `${availableModels.length} model${availableModels.length !== 1 ? 's' : ''} · Ollama` : 'Ollama offline'}</span></>
+              }
             </div>
           </div>
         </aside>
@@ -191,6 +204,27 @@ export default function App() {
 
       <main className="main-area">
         <div className="content-card">
+          {/* Demo Mode banner */}
+          {demoMode && (
+            <div style={{
+              background: 'linear-gradient(90deg, #fef3c7, #fde68a)',
+              borderBottom: '1px solid #fbbf24',
+              padding: '6px 16px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              fontSize: 12
+            }}>
+              <span style={{ color: '#78350f', fontWeight: 600 }}>
+                ⚡ Demo Mode — AI responses are simulated. All features are fully interactive.
+              </span>
+              <button
+                onClick={() => { setDemoMode(false); setOllamaConnected(false); setModels([]); }}
+                style={{ fontSize: 11, color: '#92400e', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Exit demo
+              </button>
+            </div>
+          )}
+
           <div className="card-header">
             <div className="card-header-left">
               {!sidebarOpen && (
@@ -212,6 +246,7 @@ export default function App() {
               <ModelPanel />
             </div>
           </div>
+
           <div className="card-body">{renderPanel()}</div>
           <StatusBar />
         </div>

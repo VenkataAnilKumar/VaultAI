@@ -1,6 +1,28 @@
 import axios from 'axios';
+import { getDemoResponse } from './demoData.js';
+import useStore from '../store/useStore.js';
 
 const api = axios.create({ baseURL: '/api', timeout: 120000 });
+
+// ── Demo Mode Adapter ─────────────────────────────────────────
+// When demo mode is on, intercept every request and return
+// realistic pre-written responses so judges can explore the
+// full product without a local Ollama install.
+api.interceptors.request.use((config) => {
+  if (useStore.getState().demoMode) {
+    config.adapter = async () => {
+      // Tiny delay so it feels like a real network call
+      await new Promise(r => setTimeout(r, 280 + Math.random() * 400));
+      const demoData = getDemoResponse(
+        config.method,
+        config.url,
+        config.data
+      );
+      return { data: demoData, status: 200, statusText: 'OK', headers: {}, config };
+    };
+  }
+  return config;
+});
 
 // Health & Models
 export const checkOllamaStatus = () => api.get('/models/status').then(r => r.data);
@@ -27,30 +49,30 @@ export const extractData = (data) => api.post('/generate/extract', data).then(r 
 export const autoRename = (filePath) => api.post('/generate/autorename', { filePath }).then(r => r.data);
 export const suggestOrganization = (directoryPath) => api.post('/generate/suggest-organization', { directoryPath }).then(r => r.data);
 
-// Documents (Phase 1)
-export const ingestDocument          = (filePath)          => api.post('/documents/ingest',    { filePath }).then(r => r.data);
-export const listDocuments           = ()                   => api.get('/documents').then(r => r.data);
-export const deleteDocument          = (filePath)           => api.delete('/documents', { data: { filePath } }).then(r => r.data);
-export const queryDocument           = (question, filePath, topK = 5) => api.post('/documents/query', { question, filePath, topK }).then(r => r.data);
-export const summarizeDocument       = (filePath, type)     => api.post('/documents/summarize', { filePath, type }).then(r => r.data);
-export const extractFromDocument     = (filePath, fields)   => api.post('/documents/extract',   { filePath, fields }).then(r => r.data);
-export const classifyDocument        = (filePath)           => api.post('/documents/classify',  { filePath }).then(r => r.data);
-export const indexDocumentDirectory  = (directoryPath)      => api.post('/documents/index-directory', { directoryPath }).then(r => r.data);
+// Documents — Phase 1
+export const ingestDocument         = (filePath)         => api.post('/documents/ingest',    { filePath }).then(r => r.data);
+export const listDocuments          = ()                  => api.get('/documents').then(r => r.data);
+export const deleteDocument         = (filePath)          => api.delete('/documents', { data: { filePath } }).then(r => r.data);
+export const queryDocument          = (question, filePath, topK = 5) => api.post('/documents/query', { question, filePath, topK }).then(r => r.data);
+export const summarizeDocument      = (filePath, type)    => api.post('/documents/summarize', { filePath, type }).then(r => r.data);
+export const extractFromDocument    = (filePath, fields)  => api.post('/documents/extract',   { filePath, fields }).then(r => r.data);
+export const classifyDocument       = (filePath)          => api.post('/documents/classify',  { filePath }).then(r => r.data);
+export const indexDocumentDirectory = (directoryPath)     => api.post('/documents/index-directory', { directoryPath }).then(r => r.data);
 
-// Documents (Phase 2)
-export const detectPII               = (filePath)           => api.post('/documents/pii',        { filePath }).then(r => r.data);
-export const multiQueryDocuments     = (question, filePaths, topK = 6) => api.post('/documents/multi-query', { question, filePaths, topK }).then(r => r.data);
-export const organizeDocuments       = (filePaths)          => api.post('/documents/organize',   { filePaths }).then(r => r.data);
+// Documents — Phase 2
+export const detectPII              = (filePath)          => api.post('/documents/pii',         { filePath }).then(r => r.data);
+export const multiQueryDocuments    = (question, filePaths, topK = 6) => api.post('/documents/multi-query', { question, filePaths, topK }).then(r => r.data);
+export const organizeDocuments      = (filePaths)         => api.post('/documents/organize',    { filePaths }).then(r => r.data);
 
-// Research (Phase 3)
-export const webSearch               = (q, limit = 8)       => api.get('/research/search', { params: { q, limit } }).then(r => r.data);
-export const deepResearch            = (question, maxSteps) => api.post('/research/deep',   { question, maxSteps }).then(r => r.data);
-export const summarizeUrl            = (url)                => api.post('/research/summarize-url', { url }).then(r => r.data);
+// Research — Phase 3
+export const webSearch              = (q, limit = 8)      => api.get('/research/search', { params: { q, limit } }).then(r => r.data);
+export const deepResearch           = (question, maxSteps) => api.post('/research/deep',  { question, maxSteps }).then(r => r.data);
+export const summarizeUrl           = (url)               => api.post('/research/summarize-url', { url }).then(r => r.data);
 
-// Custom Skills (Phase 4)
-export const getCustomSkills         = ()                   => api.get('/skills').then(r => r.data);
-export const createCustomSkill       = (data)               => api.post('/skills', data).then(r => r.data);
-export const deleteCustomSkill       = (id)                 => api.delete(`/skills/${id}`).then(r => r.data);
+// Custom Skills — Phase 4
+export const getCustomSkills        = ()                  => api.get('/skills').then(r => r.data);
+export const createCustomSkill      = (data)              => api.post('/skills', data).then(r => r.data);
+export const deleteCustomSkill      = (id)                => api.delete(`/skills/${id}`).then(r => r.data);
 
 // Agents
 export const getAgents = () => api.get('/agents').then(r => r.data);
