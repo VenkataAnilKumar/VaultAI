@@ -14,8 +14,27 @@ class EmbeddingsService {
     return await this.ollama.embeddings(model, text);
   }
 
+  // ── HyDE: Hypothetical Document Embeddings ────────────────────
+  // Generate a hypothetical answer to the query, then embed that.
+  // The hypothetical answer is stylistically closer to real document
+  // chunks, dramatically improving retrieval accuracy.
+  async getHyDEEmbedding(query) {
+    try {
+      const model = await this.router.selectModel('doc_qa');
+      if (!model) return this.getEmbedding(query); // fallback to naive
+
+      const hypothetical = await this.ollama.generate(model,
+        `Write a short paragraph (3-5 sentences) that directly answers this question as if it came from a document:\n\nQuestion: ${query}\n\nAnswer (be factual and specific):`
+      );
+      const hypotheticalText = hypothetical.response?.trim() || query;
+      return this.getEmbedding(hypotheticalText);
+    } catch {
+      return this.getEmbedding(query); // fallback to naive on any error
+    }
+  }
+
   async indexDirectory(directoryPath, vectorStore, docReader) {
-    const supported = ['.txt', '.md', '.pdf', '.docx', '.doc', '.js', '.ts', '.py', '.go', '.rs', '.java', '.cpp', '.cs', '.json', '.yaml', '.toml', '.html', '.css', '.sql'];
+    const supported = ['.txt', '.md', '.markdown', '.rst', '.log', '.pdf', '.docx', '.doc', '.xlsx', '.xls', '.csv', '.js', '.ts', '.jsx', '.tsx', '.py', '.go', '.rs', '.java', '.cpp', '.c', '.cs', '.rb', '.php', '.sh', '.yaml', '.yml', '.toml', '.json', '.xml', '.html', '.css', '.sql'];
     let indexed = 0, skipped = 0, errors = [];
 
     function walk(dir) {
@@ -62,12 +81,26 @@ class EmbeddingsService {
     return { indexed, skipped, errors };
   }
 
+  // Naive RAG search (Phase 1 default)
   async searchSemantic(query, topK = 10, directoryFilter, vectorStore) {
     const queryEmbedding = await this.getEmbedding(query);
     const results = vectorStore.search(queryEmbedding, topK, directoryFilter || null);
     return results.map(r => ({
       filePath: r.filePath,
       excerpt: r.chunk.slice(0, 300),
+      score: r.score,
+      chunkIndex: r.chunkIndex
+    }));
+  }
+
+  // HyDE-enhanced search (Phase 2) — better recall for doc Q&A
+  async searchHyDE(query, topK = 10, filePathFilter, vectorStore) {
+    const hydeEmbedding = await this.getHyDEEmbedding(query);
+    const filter = filePathFilter || null;
+    const results = vectorStore.search(hydeEmbedding, topK, filter);
+    return results.map(r => ({
+      filePath: r.filePath,
+      excerpt: r.chunk.slice(0, 400),
       score: r.score,
       chunkIndex: r.chunkIndex
     }));

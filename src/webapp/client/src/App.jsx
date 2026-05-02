@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   LockIcon, MessageSquareIcon, SparklesIcon, PlugIcon, ServerIcon,
   PlusIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, CpuIcon,
-  TrashIcon, SettingsIcon, ZapIcon
+  TrashIcon, SettingsIcon, ZapIcon, FileTextIcon, GlobeIcon
 } from 'lucide-react';
 import FileBrowser from './components/FileBrowser.jsx';
 import Chat from './components/Chat.jsx';
@@ -14,6 +14,8 @@ import MCPPanel from './components/mcp/MCPPanel.jsx';
 import SkillsPanel from './components/SkillsPanel.jsx';
 import SettingsPanel from './components/SettingsPanel.jsx';
 import SessionHistory from './components/SessionHistory.jsx';
+import DocumentAgentPanel from './components/document/DocumentAgentPanel.jsx';
+import ResearchPanel from './components/research/ResearchPanel.jsx';
 import { useTheme } from './hooks/useTheme.js';
 import { useSessionHistory } from './hooks/useSessionHistory.js';
 import useStore from './store/useStore.js';
@@ -21,6 +23,8 @@ import { checkOllamaStatus, getModels } from './api/client.js';
 
 const NAV_ITEMS = [
   { id: 'chat',       label: 'Chat',       icon: MessageSquareIcon },
+  { id: 'documents',  label: 'Documents',  icon: FileTextIcon      },
+  { id: 'research',   label: 'Research',   icon: GlobeIcon         },
   { id: 'skills',     label: 'Skills',     icon: ZapIcon           },
   { id: 'generate',   label: 'Generate',   icon: SparklesIcon      },
   { id: 'connectors', label: 'Connectors', icon: PlugIcon          },
@@ -28,8 +32,8 @@ const NAV_ITEMS = [
 ];
 
 const TAB_LABELS = {
-  chat: 'Chat', skills: 'Skills', generate: 'Generate',
-  connectors: 'Connectors', mcp: 'MCP Tools',
+  chat: 'Chat', documents: 'Documents', research: 'Research',
+  skills: 'Skills', generate: 'Generate', connectors: 'Connectors', mcp: 'MCP Tools',
 };
 
 export default function App() {
@@ -40,12 +44,11 @@ export default function App() {
   } = useStore();
 
   const { theme, setTheme } = useTheme();
-  const { sessions, saveSession, deleteSession, getSession } = useSessionHistory();
+  const { sessions, saveSession, deleteSession } = useSessionHistory();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
 
-  // ── Init ──────────────────────────────────────────────────────
   useEffect(() => {
     async function init() {
       try {
@@ -58,7 +61,6 @@ export default function App() {
       } catch { setOllamaConnected(false); }
 
       for (const dir of ['/home/runner', '/tmp']) {
-        if (!dir) continue;
         try {
           const r = await fetch(`/api/files?path=${encodeURIComponent(dir)}`);
           if (r.ok) { setWorkingDirectory(dir); break; }
@@ -73,7 +75,6 @@ export default function App() {
     return () => clearInterval(iv);
   }, []);
 
-  // ── Auto-save session when chat messages change ───────────────
   useEffect(() => {
     if (messages.length > 0 && activeTab === 'chat') {
       const timer = setTimeout(() => saveSession(messages), 1500);
@@ -81,25 +82,12 @@ export default function App() {
     }
   }, [messages]);
 
-  // ── Keyboard shortcuts ────────────────────────────────────────
   const handleKeyDown = useCallback((e) => {
     const mod = e.metaKey || e.ctrlKey;
     if (!mod) return;
-
-    if (e.key === 'k' || e.key === 'K') {
-      e.preventDefault();
-      setActiveTab('chat');
-      clearMessages();
-      setActiveSessionId(null);
-    }
-    if (e.key === 'b' || e.key === 'B') {
-      e.preventDefault();
-      setSidebarOpen(v => !v);
-    }
-    if (e.key === ',') {
-      e.preventDefault();
-      setSettingsOpen(v => !v);
-    }
+    if (e.key === 'k' || e.key === 'K') { e.preventDefault(); setActiveTab('chat'); clearMessages(); setActiveSessionId(null); }
+    if (e.key === 'b' || e.key === 'B') { e.preventDefault(); setSidebarOpen(v => !v); }
+    if (e.key === ',') { e.preventDefault(); setSettingsOpen(v => !v); }
   }, []);
 
   useEffect(() => {
@@ -107,11 +95,9 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // ── Session restore ───────────────────────────────────────────
   function handleSelectSession(session) {
     setActiveSessionId(session.id);
     setActiveTab('chat');
-    // Restore messages via store — clear first then re-add
     clearMessages();
     const store = useStore.getState();
     session.messages.forEach(m => store.addMessage(m));
@@ -123,10 +109,11 @@ export default function App() {
     setActiveSessionId(null);
   }
 
-  // ── Panel render ──────────────────────────────────────────────
   const renderPanel = () => {
     switch (activeTab) {
       case 'chat':       return <Chat />;
+      case 'documents':  return <DocumentAgentPanel />;
+      case 'research':   return <ResearchPanel />;
       case 'skills':     return <SkillsPanel />;
       case 'generate':   return <GeneratePanel />;
       case 'connectors': return <ConnectorsPanel />;
@@ -140,82 +127,55 @@ export default function App() {
 
   return (
     <div className="app-shell">
-
-      {/* ══ LEFT SIDEBAR ══ */}
       {sidebarOpen && (
         <aside className="sidebar">
-
-          {/* Traffic lights */}
           <div className="sidebar-traffic">
             <div className="traffic-lights">
-              <span className="tl tl-red" />
-              <span className="tl tl-yellow" />
-              <span className="tl tl-green" />
+              <span className="tl tl-red" /><span className="tl tl-yellow" /><span className="tl tl-green" />
             </div>
             <button className="icon-btn" onClick={() => setSidebarOpen(false)} title="Collapse (⌘B)">
               <PanelLeftCloseIcon size={15} />
             </button>
           </div>
 
-          {/* New chat */}
           <div className="sidebar-section">
             <button className="new-thread-btn" onClick={handleNewChat}>
-              <PlusIcon size={14} />
-              New chat
+              <PlusIcon size={14} />New chat
             </button>
           </div>
 
-          {/* Nav */}
           <nav className="sidebar-nav">
             {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => setActiveTab(id)}
                 className={`nav-item ${activeTab === id ? 'nav-item-active' : ''}`}>
-                <Icon size={14} />
-                <span>{label}</span>
+                <Icon size={14} /><span>{label}</span>
               </button>
             ))}
           </nav>
 
           <div className="sidebar-divider" />
 
-          {/* Thread history (Chat tab) */}
           {showThreads && (
             <div className="sidebar-files">
-              <SessionHistory
-                sessions={sessions}
-                activeId={activeSessionId}
-                onSelect={handleSelectSession}
-                onDelete={deleteSession}
-              />
+              <SessionHistory sessions={sessions} activeId={activeSessionId}
+                onSelect={handleSelectSession} onDelete={deleteSession} />
             </div>
           )}
 
-          {/* File browser (Chat/Generate) */}
           {showFiles && !showThreads && (
-            <div className="sidebar-files">
-              <FileBrowser />
-            </div>
+            <div className="sidebar-files"><FileBrowser /></div>
           )}
 
-          {/* Bottom: Settings + model status */}
           <div className="sidebar-footer">
             <div className="settings-anchor">
-              <button
-                className={`nav-item ${settingsOpen ? 'nav-item-active' : ''}`}
-                onClick={() => setSettingsOpen(v => !v)}
-              >
-                <SettingsIcon size={14} />
-                <span>Settings</span>
+              <button className={`nav-item ${settingsOpen ? 'nav-item-active' : ''}`}
+                onClick={() => setSettingsOpen(v => !v)}>
+                <SettingsIcon size={14} /><span>Settings</span>
               </button>
               {settingsOpen && (
-                <SettingsPanel
-                  theme={theme}
-                  setTheme={setTheme}
-                  onClose={() => setSettingsOpen(false)}
-                />
+                <SettingsPanel theme={theme} setTheme={setTheme} onClose={() => setSettingsOpen(false)} />
               )}
             </div>
-
             <div className="model-status">
               <span className={`status-dot ${ollamaConnected ? 'dot-green' : 'dot-red'}`} />
               <CpuIcon size={12} />
@@ -229,10 +189,8 @@ export default function App() {
         </aside>
       )}
 
-      {/* ══ MAIN AREA ══ */}
       <main className="main-area">
         <div className="content-card">
-
           <div className="card-header">
             <div className="card-header-left">
               {!sidebarOpen && (
@@ -254,11 +212,7 @@ export default function App() {
               <ModelPanel />
             </div>
           </div>
-
-          <div className="card-body">
-            {renderPanel()}
-          </div>
-
+          <div className="card-body">{renderPanel()}</div>
           <StatusBar />
         </div>
       </main>

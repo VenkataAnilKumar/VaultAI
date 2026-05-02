@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { SendIcon, AlertCircleIcon, RefreshCwIcon } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { SendIcon, AlertCircleIcon, RefreshCwIcon, MicIcon, MicOffIcon } from 'lucide-react';
 import useStore from '../store/useStore.js';
 import { sendChat, checkOllamaStatus } from '../api/client.js';
 import MessageBubble from './MessageBubble.jsx';
@@ -14,13 +14,54 @@ export default function Chat() {
     isLoading, setLoading, pendingAction, setPendingAction, workflowMode, externalMCPTools
   } = useStore();
 
-  const [input, setInput] = useState('');
+  const [input, setInput]             = useState('');
+  const [listening, setListening]     = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
   const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
+  const inputRef       = useRef(null);
+  const recognitionRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Voice input setup (Phase 5)
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setVoiceSupported(true);
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+
+      rec.onresult = (e) => {
+        const transcript = Array.from(e.results)
+          .map(r => r[0].transcript)
+          .join('');
+        setInput(transcript);
+        if (e.results[e.results.length - 1].isFinal) {
+          setListening(false);
+        }
+      };
+
+      rec.onerror = () => setListening(false);
+      rec.onend   = () => setListening(false);
+      recognitionRef.current = rec;
+    }
+  }, []);
+
+  function toggleVoice() {
+    if (!recognitionRef.current) return;
+    if (listening) {
+      recognitionRef.current.stop();
+      setListening(false);
+    } else {
+      setInput('');
+      recognitionRef.current.start();
+      setListening(true);
+    }
+  }
 
   async function handleRetryConnection() {
     try {
@@ -33,6 +74,7 @@ export default function Chat() {
 
   async function handleSend() {
     if (!input.trim() || isLoading) return;
+    if (listening) { recognitionRef.current?.stop(); setListening(false); }
     const userMessage = input.trim();
     setInput('');
     if (inputRef.current) inputRef.current.style.height = '40px';
@@ -91,10 +133,28 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-gray-50/50">
         <WorkflowToggle />
-        <MCPToolBadge tools={externalMCPTools} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {voiceSupported && (
+            <button
+              onClick={toggleVoice}
+              title={listening ? 'Stop listening' : 'Voice input'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                fontSize: 11, fontWeight: 500, padding: '3px 10px',
+                borderRadius: 20, border: 'none', cursor: 'pointer',
+                background: listening ? '#fee2e2' : '#f3f4f6',
+                color: listening ? '#dc2626' : '#6b7280',
+                transition: 'all 0.15s'
+              }}
+            >
+              {listening ? <MicOffIcon size={12} /> : <MicIcon size={12} />}
+              {listening ? 'Listening…' : 'Voice'}
+            </button>
+          )}
+          <MCPToolBadge tools={externalMCPTools} />
+        </div>
       </div>
 
       {!ollamaConnected && (
@@ -173,22 +233,41 @@ export default function Chat() {
       {pendingAction && <ConfirmDialog />}
 
       <div className="border-t border-gray-200 p-3 bg-white">
+        {listening && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: '#dc2626', fontSize: 11 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#dc2626', animation: 'pulse 1s infinite' }} />
+            Listening — speak now, then click Send
+          </div>
+        )}
         <div className="flex gap-2 items-end">
           <textarea
             ref={inputRef}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={ollamaConnected ? 'Ask about your files, or give instructions...' : 'Start Ollama to use AI chat'}
+            placeholder={listening ? 'Listening...' : ollamaConnected ? 'Ask about your files, or give instructions...' : 'Start Ollama to use AI chat'}
             disabled={isLoading || !ollamaConnected}
             rows={1}
             className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 overflow-y-auto"
-            style={{ minHeight: '40px', maxHeight: '128px' }}
+            style={{ minHeight: '40px', maxHeight: '128px', outline: listening ? '2px solid #dc2626' : undefined }}
             onInput={e => {
               e.target.style.height = 'auto';
               e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px';
             }}
           />
+          {voiceSupported && (
+            <button
+              onClick={toggleVoice}
+              title={listening ? 'Stop' : 'Voice input'}
+              style={{
+                padding: '8px', borderRadius: 12, border: 'none', cursor: 'pointer', flexShrink: 0,
+                background: listening ? '#fee2e2' : '#f3f4f6',
+                color: listening ? '#dc2626' : '#6b7280'
+              }}
+            >
+              {listening ? <MicOffIcon size={18} /> : <MicIcon size={18} />}
+            </button>
+          )}
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading || !ollamaConnected}
