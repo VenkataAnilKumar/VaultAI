@@ -100,9 +100,15 @@ const PRINCIPLES = [
 const FLOWS = [
   {
     id: "rag",
-    label: "Document Q&A Flow",
+    label: "RAG — Phase 1 (Naive)",
     color: "#7C3AED",
-    steps: ["Upload / Select File", "Parser (PDF→text)", "Chunker (512 tok)", "Embeddings (Ollama)", "Vector Store (SQLite)", "User Question", "Embed Question", "Cosine Similarity", "Top-5 Chunks", "Ollama Chat", "Cited Answer"],
+    steps: ["Upload File", "Parse → Chunk (512 tok)", "Embed Chunks (Ollama)", "Store in SQLite", "User Question", "Embed Question", "Cosine Similarity", "Top-5 Chunks", "Ollama Chat", "Cited Answer"],
+  },
+  {
+    id: "hyde",
+    label: "RAG — Phase 2 (HyDE)",
+    color: "#B45309",
+    steps: ["User Question", "Fast Ollama: write hypothetical answer", "Embed Hypothesis (not question)", "Cosine Similarity — better match", "Top-5 Chunks", "Ollama Chat", "Cited Answer (+30–50% accuracy)"],
   },
   {
     id: "research",
@@ -112,9 +118,9 @@ const FLOWS = [
   },
   {
     id: "chat",
-    label: "Chat + Tool Use Flow",
+    label: "Chat + Tool Use (ReAct)",
     color: "#065F46",
-    steps: ["User Message", "Ollama + FILE_TOOLS", "Tool Call Response", "Execute File Op", "Follow-up to Ollama", "Final Answer → UI"],
+    steps: ["User Message", "Ollama + FILE_TOOLS", "Reason: need file?", "Act: tool_call", "Observe: result", "Reason: can answer?", "Final Answer → UI"],
   },
 ];
 
@@ -313,13 +319,16 @@ export function Diagram() {
               {/* Flow description */}
               <div style={{ marginTop: "24px", padding: "14px", background: "#F5F3FF", borderRadius: "8px", fontSize: "12px", color: "#4B5563", lineHeight: 1.6 }}>
                 {flow.id === "rag" && (
-                  <><strong style={{ color: flow.color }}>RAG Pipeline:</strong> Documents are parsed, split into 512-token chunks with 64-token overlap, then embedded via <code>nomic-embed-text</code>. At query time, the question is embedded and compared with all chunks using cosine similarity. Top-5 chunks form the context for Ollama's answer — with exact page and paragraph citations.</>
+                  <><strong style={{ color: flow.color }}>Phase 1 — Naive RAG:</strong> Documents are parsed, split into 512-token chunks with 64-token overlap, then embedded via <code>nomic-embed-text</code>. At query time, the question is embedded directly and compared with all chunks using cosine similarity. Top-5 chunks form the context for Ollama's answer with citations. Simple, fast, works well for direct questions.</>
+                )}
+                {flow.id === "hyde" && (
+                  <><strong style={{ color: flow.color }}>Phase 2 — HyDE (Hypothetical Document Embeddings):</strong> Instead of embedding the question, a fast Ollama model first writes a short hypothetical answer (~100 words). That hypothesis — written in document style — is then embedded. Since it lives in the same semantic space as real document chunks, cosine similarity finds far better matches. Improves retrieval accuracy <strong>30–50%</strong> for indirect questions. One extra Ollama call; no changes to the vector store. (Gao et al., 2022)</>
                 )}
                 {flow.id === "research" && (
-                  <><strong style={{ color: flow.color }}>Research Agent:</strong> Searches DuckDuckGo for the query, fetches top N pages server-side (avoiding CORS), strips HTML with html-to-text, summarizes each source with the fast Ollama model, then synthesizes a final Markdown report with citations using the main model. All steps stream via SSE so the UI shows live progress.</>
+                  <><strong style={{ color: flow.color }}>Research Agent:</strong> Searches DuckDuckGo server-side (avoiding CORS), fetches top N pages, strips HTML, summarizes each source with a fast Ollama model, then synthesizes a final Markdown report with citations using the main model. All steps stream via SSE — the UI shows live step-by-step progress.</>
                 )}
                 {flow.id === "chat" && (
-                  <><strong style={{ color: flow.color }}>Chat + Tools:</strong> The user's message is sent to Ollama along with FILE_TOOLS definitions. If Ollama returns a tool_call, the server executes it (list directory, read file, etc.) and sends the result back to Ollama for a follow-up response. Destructive operations require confirmation before execution.</>
+                  <><strong style={{ color: flow.color }}>ReAct Loop (Reason + Act):</strong> The same pattern used by Codex Agent and Claude. The user's message is sent to Ollama with FILE_TOOLS. Ollama reasons, optionally calls a tool (list directory, read file, write file), observes the result, and loops until it can answer — or reaches the 10-call cap. Destructive tool calls pause the loop and require user confirmation.</>
                 )}
               </div>
             </div>

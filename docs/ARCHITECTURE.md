@@ -3,9 +3,9 @@
 > Privacy-first, local AI-powered document intelligence platform.
 > All AI runs via Ollama. No cloud. No telemetry. No data leaves the machine.
 
-**Version:** 1.0 Draft  
+**Version:** 1.1  
 **Date:** May 2026  
-**Status:** Architecture Review
+**Status:** Architecture Review — RAG Patterns & Agent Design Added
 
 ---
 
@@ -27,6 +27,7 @@
 14. [API Design](#14-api-design)
 15. [Deployment Model](#15-deployment-model)
 16. [Open Questions & Decisions](#16-open-questions--decisions)
+17. [Reference — AI Architecture Comparisons](#17-reference--ai-architecture-comparisons)
 
 ---
 
@@ -467,6 +468,220 @@ IDLE
 
 ---
 
+### RAG Architecture — Generations & Design Decisions
+
+Vault AI's Document Q&A is built on Retrieval-Augmented Generation (RAG). The field has evolved through three distinct generations. Understanding all three informs our design decisions.
+
+#### Generation 1: Naive RAG (Current Baseline)
+
+```
+User Question
+      │
+      ▼
+  Embed question (nomic-embed-text)
+      │
+      ▼
+  Cosine similarity vs. all chunk embeddings in SQLite
+      │
+      ▼
+  Top-K chunks (K=5 default)
+      │
+      ▼
+  Build prompt: [system] + [chunks] + [question]
+      │
+      ▼
+  Ollama chat → Answer with citations
+```
+
+**Strengths:** Simple, fast, no extra Ollama calls.  
+**Weakness:** Questions and documents live in different semantic spaces. "What are the penalties?" doesn't embed close to "The party shall be liable for..." even though they're semantically aligned. Retrieval quality suffers on indirect or ambiguous questions.
+
+---
+
+#### Generation 2: HyDE — Hypothetical Document Embeddings (Phase 2 Target)
+
+Introduced in the paper *"Precise Zero-Shot Dense Retrieval without Relevance Labels"* (Gao et al., 2022). The core insight: **embed a hypothetical answer, not the question.**
+
+```
+User Question
+      │
+      ▼
+  [Fast Ollama call — 100-150 words]
+  Prompt: "Write a short paragraph that would answer:
+           '{question}'. Be factual and direct."
+      │
+      ▼
+  Hypothetical Answer (not shown to user)
+      │
+      ▼
+  Embed the hypothetical answer (nomic-embed-text)
+  — this vector lives in the DOCUMENT semantic space —
+      │
+      ▼
+  Cosine similarity vs. all chunk embeddings
+  — much better alignment —
+      │
+      ▼
+  Top-K chunks → Ollama chat → Real answer with citations
+```
+
+**Why this matters for Vault AI:**
+- The hypothetical answer is written in the same style as document text — so its embedding lands near real document chunks
+- Works dramatically better for indirect questions ("What could go wrong with this contract?")
+- Cost: one extra fast Ollama call (< 500ms on a 3B model)
+- No changes to the vector store or chunking pipeline
+
+**Implementation note:** Use the fastest available model (llama3.2:3b or phi3:mini) for hypothesis generation. The hypothesis quality only needs to be good enough to guide the embedding — not good enough to show the user.
+
+**Planned query flow with HyDE:**
+```javascript
+async function searchWithHyDE(question, topK, directoryFilter) {
+  // Step 1: Generate hypothetical answer
+  const fastModel = await router.selectModel('file_op'); // fastest available
+  const hypothesis = await ollama.generate(fastModel,
+    `Write a short factual paragraph that would answer this question:\n"${question}"\nBe direct and specific.`
+  );
+
+  // Step 2: Embed the hypothesis (not the question)
+  const hypothesisEmbedding = await embeddings.getEmbedding(hypothesis.response);
+
+  // Step 3: Search with hypothesis embedding
+  return vectorStore.search(hypothesisEmbedding, topK, directoryFilter);
+}
+```
+
+---
+
+#### Generation 3: Agentic RAG (Phase 3+ Future)
+
+The model decides *when* to retrieve, *what* to query, and *whether* the result is sufficient. Implemented as a ReAct loop (see Section 7.6 below).
+
+```
+Question
+    │
+    ▼
+Ollama decides: "I need to retrieve more context"
+    │
+    ▼ [tool call: search_document(query="payment terms")]
+    │
+    ▼
+Retrieved chunks
+    │
+    ▼
+Ollama evaluates: "Confidence: 3/5 — I need more"
+    │
+    ▼ [tool call: search_document(query="liability clauses section 8")]
+    │
+    ▼
+Retrieved chunks (refined)
+    │
+    ▼
+Ollama: "Confidence: 5/5 — I can answer now"
+    │
+    ▼
+Final answer with citations
+```
+
+**Cap at 3 iterations** to prevent infinite loops on local hardware.  
+**Not recommended for Phase 1 or 2:** Multiple Ollama calls per query is expensive on consumer hardware. HyDE gets 80% of the quality benefit with ~10% of the complexity.
+
+---
+
+#### RAG Design Decision Summary
+
+| Pattern | Ollama calls per query | Quality gain | When |
+|---------|----------------------|--------------|------|
+| Naive RAG | 1 (embed) + 1 (answer) | Baseline | Phase 1 ✅ |
+| HyDE | 1 (hypothesize) + 1 (embed) + 1 (answer) | +30–50% retrieval accuracy | Phase 2 🎯 |
+| Agentic RAG | 1–N (loop) + 1 (answer) | Highest, but unpredictable | Phase 3+ |
+
+**Decision: Ship Naive RAG in Phase 1. Upgrade to HyDE in Phase 2 as a drop-in improvement to `searchSemantic()`.** The API contract is unchanged — only the retrieval step is better.
+
+---
+
+### Agent Design Patterns — Lessons from State-of-the-Art
+
+Vault AI's agent design draws from two publicly documented approaches: OpenAI Codex Agent and Anthropic Claude.
+
+#### The ReAct Pattern (Reason + Act)
+
+Both Codex Agent and Claude's tool-use mode implement this loop:
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    REACT LOOP                        │
+│                                                      │
+│  User Input                                          │
+│       │                                              │
+│       ▼                                              │
+│  [REASON] Ollama thinks: "I need to read file X"    │
+│       │                                              │
+│       ▼                                              │
+│  [ACT] tool_call: { name: "read_file", args: {...} } │
+│       │                                              │
+│       ▼                                              │
+│  [OBSERVE] Tool result returned to Ollama            │
+│       │                                              │
+│       ▼                                              │
+│  [REASON] Ollama thinks: "Now I can answer"         │
+│       │                                              │
+│       ▼                                              │
+│  [RESPOND] Final answer → User                       │
+└─────────────────────────────────────────────────────┘
+```
+
+Vault AI's Chat agent already implements this via Ollama's native tool-use (`/api/chat` with `tools: [...]`). The model decides when to call a tool and when to answer directly.
+
+**Loop termination rules (Vault AI):**
+- Max 10 tool calls per conversation turn
+- If Ollama returns a `content` response (no `tool_calls`), the loop ends
+- Destructive tool calls pause the loop and wait for user confirmation
+
+---
+
+#### Context Management Strategy
+
+Three approaches used by state-of-the-art agents:
+
+| Strategy | How | Used by | Vault AI |
+|----------|-----|---------|----------|
+| **Stuff it all in** | Full documents in context window | Claude (large context) | For docs < 4K tokens |
+| **RAG retrieval** | Retrieve only relevant chunks | Most RAG systems | For docs 4K–200K tokens |
+| **Sandbox execution** | Agent reads files on-demand via tools | Codex Agent | For file system operations |
+
+Vault AI uses all three strategies, selected by document size and task type:
+
+```
+Task: "Answer a question about this PDF"
+  → Size < 4K tokens?  → Stuff full content
+  → Size 4K–200K?      → RAG (embed + retrieve top-5 chunks)
+  → Size > 200K?       → Summarize sections, then RAG on summaries
+
+Task: "Find all PDFs in my Documents folder"
+  → Sandbox execution (LLM calls list_directory tool)
+
+Task: "Compare two contracts"
+  → RAG on each document independently, then synthesize
+```
+
+---
+
+#### Tool Design Principles
+
+Drawing from how Codex Agent and Claude define tools:
+
+1. **Atomic tools, not compound tools** — `read_file` and `write_file` separately, not `read_and_update_file`. Lets the model chain them as needed.
+
+2. **Explicit parameter validation** — every tool validates its inputs before execution. Bad paths, out-of-bounds ranges, missing required params all fail loudly.
+
+3. **Confirmation gate for destructive actions** — delete, move, bulk-rename require the tool to return a `confirmation_required: true` response rather than executing immediately. The frontend renders a confirmation dialog.
+
+4. **Tool results as structured JSON** — not prose. The model re-reads the result; structured data is easier for it to reason about than "Files found: file1.pdf, file2.pdf..."
+
+5. **Error messages are model-readable** — `{ "error": "Path not found: /Users/alex/Documents/report.pdf", "suggestion": "Did you mean /Users/alex/Documents/Report.pdf?" }` — the model can recover from this; an unstructured error string makes it harder.
+
+---
+
 ## 8. Data Storage Architecture
 
 ### Database: SQLite (local, single file)
@@ -822,6 +1037,9 @@ User: "Find all PDFs in my Documents folder"
 | Re-ranking | No re-ranking / Cross-encoder | No re-ranking for now (keep deps minimal) |
 | Streaming chat | No / Yes (SSE) | Yes — improves perceived performance |
 | PDF table extraction | pdf-parse (text only) / Camelot | pdf-parse for now; Camelot in Phase 2 |
+| RAG retrieval strategy | Naive / HyDE / Agentic | **Decided: Naive in Phase 1, HyDE in Phase 2** (see Section 7 RAG Patterns) |
+| Hypothesis model for HyDE | Same model / fastest available | Fastest available (llama3.2:3b or phi3:mini) — quality doesn't need to be high |
+| Max ReAct loop iterations | 5 / 10 / unlimited | 10 tool calls per turn; Agentic RAG capped at 3 retrieve iterations |
 
 ---
 
@@ -987,20 +1205,66 @@ All data access via localhost backend
 
 ## 16. Open Questions & Decisions
 
-These need to be resolved before or during Phase 1 build:
+### Resolved Decisions
 
-| # | Question | Options | Recommendation |
-|---|----------|---------|----------------|
-| Q1 | How do we handle very large PDFs (500+ pages)? | Truncate / Summarize-then-embed / Progressive | Summarize-then-embed for docs > 200 pages |
-| Q2 | Should chat streaming be implemented in Phase 1? | No (simpler) / Yes (better UX) | Yes — Ollama supports it, UI impact is large |
-| Q3 | Where do extracted data exports go? | Browser download / File system save | File system save to `~/.vault-ai/exports/` |
-| Q4 | Should the vector store support multiple embedding models? | Single model / Multi-model | Single model per index (nomic-embed-text); re-index if model changes |
-| Q5 | Folder watcher — polling or native fs events? | chokidar (native events) / polling | chokidar with native events |
-| Q6 | Should research agent fetch pages server-side or client-side? | Server-side | Server-side (avoids CORS, allows HTML stripping) |
-| Q7 | How to handle Ollama being offline mid-session? | Error message / Queue and retry | Show connection banner, queue retries with exponential backoff |
+| # | Question | Decision | Rationale |
+|---|----------|----------|-----------|
+| Q1 | How do we handle very large PDFs (500+ pages)? | Summarize-then-embed for docs > 200 pages | Full embedding of 500+ pages takes too long on local hardware; summarize each section first |
+| Q2 | Should chat streaming be implemented in Phase 1? | Yes — SSE streaming from day one | UI impact too large to defer; Ollama supports `stream: true` natively |
+| Q3 | Where do extracted data exports go? | File system save to `~/.vault-ai/exports/` | Consistent with "file system as source of truth" principle |
+| Q4 | Should the vector store support multiple embedding models? | Single model per index (nomic-embed-text) | Re-index if model changes; mixing models in one index breaks cosine similarity comparisons |
+| Q5 | Folder watcher — polling or native fs events? | `fs.watch` (Node.js built-in) with chokidar fallback | Avoids external process dependency; chokidar used as backup for platforms where `fs.watch` is unreliable |
+| Q6 | Should research agent fetch pages server-side or client-side? | Server-side only | Avoids CORS, allows HTML stripping, hides user IP from sites to degree possible |
+| Q7 | How to handle Ollama being offline mid-session? | Show connection banner, exponential backoff retry | Non-blocking — user can still browse files and sessions; AI features queue until Ollama reconnects |
+| Q8 | RAG retrieval strategy? | Naive RAG in Phase 1, HyDE in Phase 2 | HyDE adds one extra Ollama call but improves retrieval accuracy 30–50%; too much for MVP |
+| Q9 | Agent design pattern for Document Agent? | ReAct loop via Ollama tool-use, capped at 10 turns | Matches Codex Agent and Claude tool-use patterns; cap prevents runaway loops on local hardware |
+| Q10 | Context management strategy by document size? | < 4K: full context; 4K–200K: RAG; > 200K: summarize-then-RAG | Balances quality and token cost across the full range of document sizes |
+
+### Still Open
+
+| # | Question | Options | Blocking |
+|---|----------|---------|---------|
+| Q11 | How do we display citation sources in the chat UI? | Inline footnotes / Collapsible panel / Highlighted passages | Phase 1 build |
+| Q12 | Should batch operations run in a background worker thread? | Main thread (simple) / Worker thread (non-blocking) | Phase 2 build |
+| Q13 | How do we handle embedding model changes for an existing library? | Block model change / Re-index warning / Auto re-index | Phase 2 build |
+| Q14 | Should HyDE hypothesis generation be skippable per-query? | Always / User toggle / Auto-detect (short queries skip) | Phase 2 build |
+| Q15 | Multi-document Q&A: merge all chunks or retrieve per-document then merge? | Unified pool / Per-doc retrieval + merge | Phase 2 build |
+
+---
+
+## 17. Reference — AI Architecture Comparisons
+
+Brief reference on how production AI agents compare to Vault AI's approach. Useful for informing design decisions.
+
+### OpenAI Codex Agent (2025)
+
+- **Architecture:** GPT-4o / o3 + tool use in a cloud-hosted, network-isolated sandbox
+- **Agent pattern:** ReAct loop — model reasons, calls tools (read file, run tests, search), observes results, repeats
+- **Context strategy:** Sandbox-based — doesn't stuff files into context; reads what it needs via tools
+- **Why relevant to Vault AI:** The file tool design (atomic read/write/list, explicit validation, confirmation for destructive ops) is directly applicable. Our FILE_TOOLS follow the same design pattern.
+
+### Anthropic Claude (3.x / Claude.ai)
+
+- **Architecture:** Transformer decoder, 200K context window, Constitutional AI training
+- **Agent pattern:** Tool use with `tool_use` and `tool_result` message types; parallel tool calls supported
+- **Context strategy:** Large context stuffing + retrieval for very large documents
+- **Key published research:**
+  - Constitutional AI (CAI) — training on AI-generated feedback against a set of principles
+  - Interpretability: features as linear directions in activation space (Anthropic Alignment team)
+  - Long context recall: Claude 3 achieves near-perfect recall up to 100K tokens
+- **Why relevant to Vault AI:** Claude's tool result format is a useful reference for structuring how Vault AI returns tool outputs to Ollama. Also, Claude's approach of explicitly handling "I don't know" cases (rather than hallucinating) informs our system prompt design.
+
+### RAG in Production (Academic Reference)
+
+| Paper | Contribution | Applied in Vault AI |
+|-------|-------------|---------------------|
+| Lewis et al. (2020) — "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" | Foundational RAG architecture | Phase 1 naive RAG baseline |
+| Gao et al. (2022) — "Precise Zero-Shot Dense Retrieval without Relevance Labels" | HyDE (hypothetical document embeddings) | Phase 2 retrieval upgrade |
+| Yao et al. (2022) — "ReAct: Synergizing Reasoning and Acting in Language Models" | ReAct agent loop | Document Agent + Chat tool-use |
 
 ---
 
 *Document maintained at: `docs/ARCHITECTURE.md`*  
+*Version: 1.1 — Updated May 2026 with RAG patterns, agent design, and resolved decisions*  
 *Previous: `docs/FEATURES.md`*  
 *Next: `docs/BUILD_PLAN.md` — Sprint-by-Sprint Build Plan*

@@ -3,9 +3,9 @@
 > Privacy-first, local AI-powered file and document management platform.
 > All AI runs via Ollama — no cloud, no subscriptions, no data leaving your machine.
 
-**Version:** 1.0 Draft  
+**Version:** 1.1  
 **Date:** May 2026  
-**Total Features:** 97  
+**Total Features:** 99  
 
 ---
 
@@ -120,6 +120,8 @@
 | 5.13 | Semantic Search | Find relevant passages by meaning, not just keyword | P0 |
 | 5.14 | Local Embeddings | All vector embeddings generated locally via Ollama (nomic-embed-text) | P0 |
 | 5.15 | Local Vector Store | SQLite-based local vector database — no external service required | P0 |
+| 5.53 | HyDE Retrieval | Hypothetical Document Embeddings — generates a hypothetical answer first, embeds it, then retrieves matching chunks. Improves retrieval accuracy 30–50% for indirect questions | P1 |
+| 5.54 | Agentic RAG Loop | Model iteratively retrieves and refines context (up to 3 rounds) until it reaches sufficient confidence to answer. Highest quality for complex multi-part questions | P2 |
 
 ---
 
@@ -279,12 +281,12 @@
 | Skills | 5 | 2 | 1 | 2 | 0 |
 | Web Search | 5 | 1 | 2 | 2 | 0 |
 | Deep Research | 8 | 5 | 2 | 1 | 0 |
-| Document Intelligent Agent | 43 | 11 | 19 | 12 | 1 |
+| Document Intelligent Agent | 45 | 11 | 20 | 13 | 1 |
 | File Management | 6 | 2 | 1 | 3 | 0 |
 | Connectors | 6 | 0 | 4 | 2 | 0 |
 | Generate | 4 | 2 | 2 | 0 | 0 |
 | App Experience | 10 | 6 | 1 | 3 | 0 |
-| **Total** | **97** | **35** | **36** | **25** | **1** |
+| **Total** | **99** | **35** | **37** | **26** | **1** |
 
 > **Priority Key:** P0 = Must have (MVP) · P1 = Should have · P2 = Nice to have · P3 = Future
 
@@ -309,6 +311,7 @@
 *Goal: Make the Document Agent genuinely powerful*
 
 - Multi-document Q&A
+- **HyDE retrieval upgrade** — replaces naive RAG with hypothetical document embeddings for 30–50% better accuracy
 - Batch classification and tagging
 - Full Brief summarization + export
 - Side-by-side document diff with AI explanation
