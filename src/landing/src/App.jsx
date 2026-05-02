@@ -4,8 +4,34 @@ import {
   PlugIcon, ServerIcon, ShieldCheckIcon, ArrowRightIcon, CheckIcon,
   FolderIcon, GitBranchIcon, DatabaseIcon, BookmarkIcon,
   MailIcon, ZapIcon, UsersIcon, CodeIcon,
-  ChevronRightIcon, LayersIcon, MenuIcon, XIcon
+  ChevronRightIcon, LayersIcon, MenuIcon, XIcon, TrophyIcon, PlayIcon
 } from 'lucide-react';
+
+/* ── Hackathon announcement bar ── */
+function AnnouncementBar() {
+  const [visible, setVisible] = useState(true);
+  if (!visible) return null;
+  return (
+    <div style={{
+      background: 'linear-gradient(90deg, #1e1b4b, #2563eb, #7c3aed, #1e1b4b)',
+      backgroundSize: '300% auto', animation: 'rainbowShift 6s linear infinite',
+      padding: '10px 20px', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', gap: 12, position: 'relative', zIndex: 60,
+    }}>
+      <span style={{ fontSize: 14, color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+        🏆 <span style={{ opacity: 0.85 }}>Hackathon 2026 Submission</span>
+        <span style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 999, padding: '2px 10px', fontSize: 12 }}>
+          ✅ Live demo — no Ollama, no install, no signup
+        </span>
+        <a href={APP_URL} target="_blank" rel="noopener noreferrer"
+          style={{ background: '#fff', color: '#2563eb', borderRadius: 999, padding: '3px 12px', fontSize: 12, fontWeight: 800, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          Try it now →
+        </a>
+      </span>
+      <button onClick={() => setVisible(false)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+    </div>
+  );
+}
 
 /* ── App URL — works in dev (localhost:5173) and when deployed ── */
 const APP_URL = (() => {
@@ -78,7 +104,7 @@ function Nav() {
           <div className="flex items-center gap-3">
             <a href={APP_URL} target="_blank" rel="noopener noreferrer"
               className="btn-cta text-white text-sm font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-lg">
-              Open App <ArrowRightIcon size={14} />
+              <PlayIcon size={13} /> Try Demo <ArrowRightIcon size={14} />
             </a>
             <button
               onClick={() => setMobileOpen(o => !o)}
@@ -177,19 +203,29 @@ function Hero() {
         </div>
 
         {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-          <a href={APP_URL} target="_blank" rel="noopener noreferrer"
-            className="btn-cta text-white font-black px-10 py-4 rounded-2xl text-lg flex items-center gap-3 shadow-2xl"
-            style={{ boxShadow: '0 20px 60px rgba(37,99,235,0.35)' }}>
-            <SparklesIcon size={20} />
-            Launch Vault AI Free
-            <ArrowRightIcon size={18} />
-          </a>
-          <a href="#features"
-            className="text-gray-700 font-bold px-8 py-4 rounded-2xl text-base flex items-center gap-2 border-2 border-gray-200 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 bg-white shadow-sm">
-            See All Features
-            <ChevronRightIcon size={16} />
-          </a>
+        <div className="flex flex-col items-center justify-center gap-3 mb-16">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a href={APP_URL} target="_blank" rel="noopener noreferrer"
+              className="btn-cta text-white font-black px-10 py-4 rounded-2xl text-lg flex items-center gap-3 shadow-2xl"
+              style={{ boxShadow: '0 20px 60px rgba(37,99,235,0.35)' }}>
+              <PlayIcon size={20} />
+              Try Live Demo
+              <ArrowRightIcon size={18} />
+            </a>
+            <a href="#features"
+              className="text-gray-700 font-bold px-8 py-4 rounded-2xl text-base flex items-center gap-2 border-2 border-gray-200 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 bg-white shadow-sm">
+              See All Features
+              <ChevronRightIcon size={16} />
+            </a>
+          </div>
+          {/* No-friction trust line */}
+          <div className="flex items-center gap-5 mt-1">
+            {['No Ollama needed', 'No signup', 'Works instantly'].map((t, i) => (
+              <span key={i} className="flex items-center gap-1.5 text-xs text-gray-400 font-medium">
+                <CheckIcon size={11} className="text-green-500" /> {t}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Hero visual — mock UI cards */}
@@ -899,6 +935,7 @@ export default function App() {
   useReveal();
   return (
     <div className="min-h-screen bg-white">
+      <AnnouncementBar />
       <Nav />
       <Hero />
       <Ticker />
