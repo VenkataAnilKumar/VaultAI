@@ -4,7 +4,7 @@ import {
   PlugIcon, ServerIcon, ShieldCheckIcon, ArrowRightIcon, CheckIcon,
   FolderIcon, GitBranchIcon, DatabaseIcon, BookmarkIcon,
   MailIcon, ZapIcon, UsersIcon, CodeIcon,
-  ChevronRightIcon, LayersIcon, UsersIcon as UsersIcon2
+  ChevronRightIcon, LayersIcon
 } from 'lucide-react';
 
 /* ── Scroll reveal ── */
