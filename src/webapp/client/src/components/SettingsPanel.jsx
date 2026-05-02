@@ -7,15 +7,26 @@ const THEMES = [
   { value: 'system', label: 'System', Icon: MonitorIcon },
 ];
 
+const isMac = navigator.platform.toUpperCase().includes('MAC');
+const mod = isMac ? '⌘' : 'Ctrl';
+
+const SHORTCUTS = [
+  { label: 'New chat',       keys: [mod, 'K']     },
+  { label: 'Toggle sidebar', keys: [mod, 'B']     },
+  { label: 'Settings',       keys: [mod, ',']     },
+  { label: 'Send message',   keys: [mod, '↵']     },
+  { label: 'Close / cancel', keys: ['Esc']        },
+];
+
 export default function SettingsPanel({ theme, setTheme, onClose }) {
   const ref = useRef(null);
 
   useEffect(() => {
-    function handleClick(e) {
+    function h(e) {
       if (ref.current && !ref.current.contains(e.target)) onClose();
     }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, [onClose]);
 
   return (
@@ -32,7 +43,7 @@ export default function SettingsPanel({ theme, setTheme, onClose }) {
           {THEMES.map(({ value, label, Icon }) => (
             <button key={value} onClick={() => setTheme(value)}
               className={`theme-btn ${theme === value ? 'theme-btn-active' : ''}`}>
-              <Icon size={15} />
+              <Icon size={16} />
               <span>{label}</span>
             </button>
           ))}
@@ -41,7 +52,24 @@ export default function SettingsPanel({ theme, setTheme, onClose }) {
 
       <div className="settings-divider" />
 
-      {/* Privacy info */}
+      {/* Keyboard shortcuts */}
+      <div className="settings-section">
+        <p className="settings-section-label">Keyboard Shortcuts</p>
+        <div className="settings-shortcuts">
+          {SHORTCUTS.map(({ label, keys }) => (
+            <div key={label} className="shortcut-row">
+              <span>{label}</span>
+              <div className="shortcut-keys">
+                {keys.map(k => <kbd key={k} className="kbd">{k}</kbd>)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="settings-divider" />
+
+      {/* Privacy */}
       <div className="settings-section">
         <p className="settings-section-label">Privacy</p>
         <div className="settings-info-row">
@@ -56,9 +84,8 @@ export default function SettingsPanel({ theme, setTheme, onClose }) {
 
       <div className="settings-divider" />
 
-      {/* Version */}
       <div className="settings-section settings-version">
-        <span>Vault AI</span>
+        <span>Vault AI — local-first AI</span>
         <span className="settings-ver-badge">v1.0.0</span>
       </div>
     </div>
