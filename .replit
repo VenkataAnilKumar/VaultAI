@@ -1,0 +1,46 @@
+modules = ["nodejs-20"]
+run = "cd src/webapp && npm install && npm run dev"
+entrypoint = "src/webapp/package.json"
+hidden = [".config", ".git", "node_modules", "dist"]
+
+[nix]
+channel = "stable-24_05"
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
+exposeLocalhost = true
+
+[[ports]]
+localPort = 5173
+externalPort = 80
+
+[workflows]
+runButton = "Start Vault AI"
+
+[[workflows.workflow]]
+name = "Start Vault AI"
+mode = "sequential"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd src/webapp && npm install"
+waitForPort = 0
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd src/webapp && npm run dev"
+
+[[workflows.workflow]]
+name = "Install Only"
+mode = "sequential"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd src/webapp && npm install"
+
+[deployment]
+run = ["sh", "-c", "cd src/webapp && npm run start"]
+build = ["sh", "-c", "cd src/webapp && npm install && npm run build"]
