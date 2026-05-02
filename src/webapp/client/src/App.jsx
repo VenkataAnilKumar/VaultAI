@@ -57,8 +57,14 @@ export default function App() {
         if (status.connected) {
           const data = await getModels();
           setModels(data.models || []);
+        } else {
+          // Auto-start demo mode when deployed without Ollama — zero friction for judges
+          activateDemoMode();
         }
-      } catch { setOllamaConnected(false); }
+      } catch {
+        setOllamaConnected(false);
+        activateDemoMode();
+      }
 
       for (const dir of ['/home/runner', '/tmp']) {
         try {
@@ -207,20 +213,25 @@ export default function App() {
           {/* Demo Mode banner */}
           {demoMode && (
             <div style={{
-              background: 'linear-gradient(90deg, #fef3c7, #fde68a)',
-              borderBottom: '1px solid #fbbf24',
-              padding: '6px 16px',
+              background: 'linear-gradient(90deg, #1e1b4b, #2563eb, #7c3aed)',
+              borderBottom: '1px solid #4338ca',
+              padding: '7px 16px',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              fontSize: 12
+              fontSize: 12, gap: 8
             }}>
-              <span style={{ color: '#78350f', fontWeight: 600 }}>
-                ⚡ Demo Mode — AI responses are simulated. All features are fully interactive.
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, flexWrap: 'wrap' }}>
+                <span style={{ color: '#fff', fontWeight: 700 }}>⚡ Live Demo Mode</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {['All 6 panels active', 'Sample documents loaded', 'Real AI responses simulated'].map(t => (
+                    <span key={t} style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.12)', padding: '2px 8px', borderRadius: 20, fontWeight: 500 }}>{t}</span>
+                  ))}
+                </div>
+              </div>
               <button
                 onClick={() => { setDemoMode(false); setOllamaConnected(false); setModels([]); }}
-                style={{ fontSize: 11, color: '#92400e', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
               >
-                Exit demo
+                Exit
               </button>
             </div>
           )}

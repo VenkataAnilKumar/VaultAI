@@ -140,7 +140,7 @@ export default function Chat() {
   const {
     messages, addMessage, workingDirectory, ollamaConnected, setOllamaConnected,
     isLoading, setLoading, pendingAction, setPendingAction, workflowMode, externalMCPTools,
-    demoMode, setDemoMode, setModels
+    demoMode, setDemoMode, setModels, setActiveTab
   } = useStore();
 
   const [input, setInput]         = useState('');
@@ -329,19 +329,57 @@ export default function Chat() {
           </div>
         )}
 
-        {/* ── Empty state (connected) ── */}
+        {/* ── Guided demo home (connected / demo mode) ── */}
         {!showWelcome && messages.length === 0 && (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center max-w-sm">
-              <div className="text-3xl mb-3">🔒</div>
-              <h2 className="text-base font-semibold text-gray-800 mb-1">Vault AI {demoMode && <span style={{ fontSize: 11, background: '#fef3c7', color: '#92400e', padding: '1px 7px', borderRadius: 8, fontWeight: 600, marginLeft: 4 }}>DEMO</span>}</h2>
-              <p className="text-xs text-gray-400 mb-5">
-                {demoMode ? 'Demo mode active — all features work with sample data.' : 'Ask about your files, or give instructions. All local.'}
+          <div style={{ padding: '24px 20px', overflowY: 'auto', height: '100%' }}>
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: '#111827', marginBottom: 4 }}>
+                Welcome to Vault AI
+                {demoMode && (
+                  <span style={{ fontSize: 11, background: 'linear-gradient(135deg,#fef3c7,#fde68a)', color: '#92400e', padding: '2px 9px', borderRadius: 10, fontWeight: 700, marginLeft: 8, verticalAlign: 'middle', border: '1px solid #fbbf24' }}>⚡ DEMO</span>
+                )}
+              </h2>
+              <p style={{ fontSize: 12, color: '#6b7280' }}>
+                {demoMode ? 'All features are live with sample data — explore everything below.' : 'Your privacy-first AI file platform. All local.'}
               </p>
-              <div className="grid grid-cols-1 gap-1.5 text-left">
+            </div>
+
+            {/* Feature panel cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+              {[
+                { tab: 'documents', emoji: '📄', title: 'Document Agent', desc: 'Summarize NDA, extract key points, detect PII', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+                { tab: 'research',  emoji: '🌐', title: 'Research Panel', desc: 'Web search + local docs, privately', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+                { tab: 'generate',  emoji: '✨', title: 'Doc Generator',  desc: 'Create memos, reports, contracts from scratch', color: '#059669', bg: '#f0fdf4', border: '#bbf7d0' },
+                { tab: 'connectors',emoji: '🔌', title: 'Local Connectors',desc: 'Obsidian, SQLite, Git, email, bookmarks', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
+              ].map(({ tab, emoji, title, desc, color, bg, border }) => (
+                <button key={tab} onClick={() => setActiveTab(tab)} style={{
+                  background: bg, border: `1.5px solid ${border}`, borderRadius: 12,
+                  padding: '12px 14px', textAlign: 'left', cursor: 'pointer',
+                  transition: 'transform 0.15s, box-shadow 0.15s'
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 6px 20px ${color}22`; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
+                  <div style={{ fontSize: 20, marginBottom: 5 }}>{emoji}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 3 }}>{title}</div>
+                  <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.4 }}>{desc}</div>
+                </button>
+              ))}
+            </div>
+
+            {/* Chat suggestions */}
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 7 }}>Or try in chat →</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                 {(demoMode ? DEMO_SUGGESTIONS : SUGGESTIONS).map(s => (
-                  <button key={s} onClick={() => setInput(s)}
-                    className="px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-xs text-gray-600 text-left transition-colors border border-gray-100">
+                  <button key={s} onClick={() => setInput(s)} style={{
+                    padding: '7px 10px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb',
+                    fontSize: 11, color: '#374151', textAlign: 'left', cursor: 'pointer',
+                    transition: 'background 0.15s'
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#f9fafb'}>
                     {s}
                   </button>
                 ))}
