@@ -9,7 +9,6 @@ channel = "stable-24_05"
 [[ports]]
 localPort = 3001
 externalPort = 3001
-exposeLocalhost = true
 
 [[ports]]
 localPort = 5173
@@ -44,3 +43,7 @@ args = "cd src/webapp && npm install"
 [deployment]
 run = ["sh", "-c", "cd src/webapp && npm run start"]
 build = ["sh", "-c", "cd src/webapp && npm install && npm run build"]
+
+[agent]
+expertMode = true
+stack = "BEST_EFFORT_FALLBACK"

@@ -1,0 +1,856 @@
+# Vault AI — Complete Replit Build Prompt
+
+Copy and paste the entire content below into Replit Agent.
+
+---
+
+```
+Build a full-stack web application called "Vault AI" — a privacy-first, 
+local AI-powered file and document management platform. Users manage, 
+search, organize, generate, and understand their files through natural 
+language conversation with local AI models via Ollama. No cloud. No data 
+leaving the device.
+
+---
+
+## TECH STACK
+
+Frontend:  React + Vite + TailwindCSS
+Backend:   Node.js + Express
+AI:        Ollama HTTP API (http://localhost:11434)
+Vectors:   SQLite with better-sqlite3 (cosine similarity search)
+Parsing:   pdf-parse (PDF), mammoth (DOCX), fs (TXT/MD/code)
+State:     Zustand (client)
+Streaming: Server-Sent Events (SSE)
+
+---
+
+## PROJECT STRUCTURE
+
+Build the webapp package at: src/webapp/
+
+VaultAI/  (repo root)
+└── src/
+    └── webapp/
+        ├── client/
+        │   ├── src/
+        │   │   ├── components/
+        │   │   │   ├── Chat.jsx
+        │   │   │   ├── MessageBubble.jsx
+        │   │   │   ├── FileBrowser.jsx
+        │   │   │   ├── FileItem.jsx
+        │   │   │   ├── ModelPanel.jsx
+        │   │   │   ├── ConfirmDialog.jsx
+        │   │   │   ├── GeneratePanel.jsx
+        │   │   │   ├── StatusBar.jsx
+        │   │   │   └── PrivacyBadge.jsx
+        │   │   ├── store/
+        │   │   │   └── useStore.js
+        │   │   ├── api/
+        │   │   │   └── client.js
+        │   │   ├── App.jsx
+        │   │   └── main.jsx
+        │   ├── index.html
+        │   └── vite.config.js
+        ├── server/
+        │   ├── routes/
+        │   │   ├── chat.js
+        │   │   ├── files.js
+        │   │   ├── models.js
+        │   │   ├── search.js
+        │   │   └── generate.js
+        │   ├── services/
+        │   │   ├── ollama.js
+        │   │   ├── fileOps.js
+        │   │   ├── docReader.js
+        │   │   ├── embeddings.js
+        │   │   ├── vectorStore.js
+        │   │   └── genAI.js
+        │   ├── tools/
+        │   │   └── fileTools.js
+        │   └── index.js
+        └── package.json
+
+---
+
+## SERVER — src/webapp/server/index.js
+
+Express server on port 3001.
+- CORS enabled for http://localhost:5173
+- JSON body parser with 50mb limit
+- Mount routes: /api/chat, /api/files, /api/models, /api/search, /api/generate
+- On startup: check Ollama at localhost:11434, log available models
+- Serve static client build in production
+
+---
+
+## SERVER — src/webapp/server/services/ollama.js
+
+OllamaClient class:
+  constructor(baseUrl = 'http://localhost:11434')
+  
+  async chat(model, messages, tools = [], stream = false)
+    POST /api/chat
+    Body: { model, messages, tools, stream }
+    Returns: response object or stream
+  
+  async generate(model, prompt, stream = false)
+    POST /api/generate  
+    Body: { model, prompt, stream }
+    Returns: response text or stream
+  
+  async embeddings(model, text)
+    POST /api/embeddings
+    Body: { model, input: text }
+    Returns: embedding array (float[])
+  
+  async listModels()
+    GET /api/tags
+    Returns: array of { name, size, modified }
+  
+  async isConnected()
+    GET /
+    Returns: boolean
+
+ModelRouter class:
+  constructor(ollamaClient)
+  
+  async getAvailableModels()
+    Cache list from Ollama, refresh every 60s
+  
+  classifyTask(message, fileType = null)
+    Returns task type string:
+    - Check fileType first: image/* → 'vision', code ext → 'code'
+    - Keywords: move/copy/delete/rename/create/organize/list → 'file_op'
+    - Keywords: write/draft/generate/create document → 'generate'
+    - Keywords: rewrite/translate/simplify/shorten/transform → 'transform'
+    - Keywords: compare/combine/merge/synthesize → 'synthesize'
+    - Keywords: extract/pull out/list all → 'extract'
+    - Default: 'doc_qa'
+  
+  async selectModel(taskType)
+    Priority lists per task type:
+    file_op:    ['llama3.2:3b', 'llama3.2', 'phi3:mini', first_available]
+    doc_qa:     ['mistral:7b', 'llama3.1:8b', 'llama3:8b', largest_available]
+    generate:   ['llama3.1:8b', 'mistral:7b', 'llama3:8b', largest_available]
+    transform:  ['mistral:7b', 'llama3.1:8b', largest_available]
+    synthesize: ['llama3.1:8b', 'mistral:7b', largest_available]
+    extract:    ['mistral:7b', 'llama3.1:8b', largest_available]
+    embedding:  ['nomic-embed-text', 'mxbai-embed-large', first_available]
+    vision:     ['llava:7b', 'llava', 'moondream', null_if_none]
+    code:       ['qwen2.5-coder:7b', 'codellama:7b', 'mistral:7b', largest]
+    Returns: model name string or null if nothing available
+
+---
+
+## SERVER — src/webapp/server/tools/fileTools.js
+
+Export array of tool definitions for Ollama function calling.
+Each tool has: type: 'function', function: { name, description, parameters }
+
+Tools:
+1. list_directory
+   description: "List all files and folders in a directory"
+   parameters: { path: { type: string, description: "Directory path" } }
+
+2. read_file
+   description: "Read the text content of a file"
+   parameters: { path: { type: string } }
+
+3. move_file
+   description: "Move a file or folder to a new location"
+   parameters: { source: { type: string }, destination: { type: string } }
+   destructive: false (moving is reversible)
+
+4. copy_file
+   description: "Copy a file to a new location"
+   parameters: { source: { type: string }, destination: { type: string } }
+
+5. delete_file
+   description: "Move a file to trash (recoverable)"
+   parameters: { path: { type: string } }
+   destructive: true
+
+6. create_folder
+   description: "Create a new directory"
+   parameters: { path: { type: string } }
+
+7. rename_file
+   description: "Rename a file or folder"
+   parameters: { path: { type: string }, new_name: { type: string } }
+
+8. get_file_info
+   description: "Get metadata about a file: size, type, dates"
+   parameters: { path: { type: string } }
+
+9. search_files
+   description: "Search for files by name pattern in a directory"
+   parameters: { 
+     query: { type: string }, 
+     directory: { type: string },
+     recursive: { type: boolean, default: true }
+   }
+
+10. bulk_move
+    description: "Move multiple files to a destination folder"
+    parameters: { 
+      files: { type: array, items: { type: string } },
+      destination: { type: string }
+    }
+    destructive: true (when more than 5 files)
+
+Export DESTRUCTIVE_TOOLS = ['delete_file'] and CONFIRM_THRESHOLD tools.
+
+---
+
+## SERVER — src/webapp/server/services/fileOps.js
+
+Import: fs-extra, path, trash, os
+
+validatePath(filePath):
+  - Resolve to absolute path
+  - Reject if contains '..' after resolution
+  - Reject if path is outside os.homedir() 
+  - Returns: { valid: boolean, resolved: string, error?: string }
+
+executeTool(toolName, args):
+  Returns: { success: boolean, result: any, error?: string }
+  
+  list_directory: 
+    fs.readdirSync with stats
+    Return: { files: [{ name, path, type, size, modified, extension }] }
+    Sort: folders first, then files, alphabetical
+  
+  read_file:
+    Delegate to docReader.extractText(path)
+    Return: { content: string, wordCount: number, type: string }
+  
+  move_file:
+    Validate both paths
+    fs-extra.move(source, destination, { overwrite: false })
+    Return: { moved: true, from, to }
+  
+  copy_file:
+    fs-extra.copy(source, destination)
+    Return: { copied: true, from, to }
+  
+  delete_file:
+    import trash dynamically
+    await trash(path)
+    Return: { deleted: true, path, sentToTrash: true }
+  
+  create_folder:
+    fs.mkdirSync(path, { recursive: true })
+    Return: { created: true, path }
+  
+  rename_file:
+    Validate new_name (no path separators)
+    fs.renameSync(path, newPath)
+    Return: { renamed: true, from, to }
+  
+  get_file_info:
+    fs.statSync
+    Return: { name, path, size, type, created, modified, extension, isDirectory }
+  
+  search_files:
+    Walk directory recursively
+    Match filename against query (case-insensitive contains)
+    Return: { results: [{ name, path, size, modified }], count }
+  
+  bulk_move:
+    Validate destination exists or create it
+    Iterate and move each file
+    Return: { moved: count, errors: [], files: [] }
+
+---
+
+## SERVER — src/webapp/server/services/docReader.js
+
+Import: pdf-parse, mammoth, fs
+
+extractText(filePath):
+  Detect type from extension
+  .pdf → pdf-parse → return text
+  .docx, .doc → mammoth.extractRawText → return text
+  .txt, .md → fs.readFileSync → return text
+  .js, .ts, .py, .go, .rs, .java, .cpp, .cs, .json, .yaml, .toml → fs.readFileSync
+  image types → return { isImage: true, text: null }
+  other → return { unsupported: true, text: null }
+  
+  Return: { text: string, wordCount: number, type: string, error?: string }
+
+chunkText(text, chunkSize = 500, overlap = 50):
+  Split by tokens (approximate: 1 token ≈ 4 chars)
+  Return: array of { chunk: string, index: number, startChar: number }
+
+---
+
+## SERVER — src/webapp/server/services/vectorStore.js
+
+Import: better-sqlite3
+
+VectorStore class:
+  constructor(dbPath = './vault-ai-vectors.db')
+  
+  initialize():
+    Create table: documents(id, filePath, chunkIndex, chunk, embedding BLOB, 
+                            fileHash, indexedAt)
+    Create index on filePath
+  
+  cosineSimilarity(vecA, vecB):
+    Pure JS implementation
+    Returns: float between -1 and 1
+  
+  upsertChunk(filePath, chunkIndex, chunk, embedding, fileHash):
+    Insert or replace based on (filePath, chunkIndex)
+  
+  search(queryEmbedding, topK = 10, directoryFilter = null):
+    Load all embeddings from DB
+    Compute cosine similarity against queryEmbedding
+    Filter by directoryFilter if provided
+    Sort by score descending
+    Return: top K { filePath, chunk, score, chunkIndex }
+  
+  isIndexed(filePath, fileHash):
+    Check if file is already indexed with same hash
+    Returns: boolean
+  
+  getIndexedFiles():
+    Return: list of { filePath, chunkCount, indexedAt }
+  
+  deleteFile(filePath):
+    Remove all chunks for this file
+
+---
+
+## SERVER — src/webapp/server/services/embeddings.js
+
+Import: OllamaClient
+
+EmbeddingsService class:
+  constructor(ollamaClient, modelRouter)
+  
+  async getEmbedding(text):
+    model = await modelRouter.selectModel('embedding')
+    return await ollamaClient.embeddings(model, text)
+  
+  async indexDirectory(directoryPath, vectorStore, docReader):
+    Walk directory recursively
+    For each supported file:
+      hash = md5(filePath + mtime)
+      if vectorStore.isIndexed(filePath, hash): skip
+      text = docReader.extractText(filePath)
+      if not text: skip
+      chunks = docReader.chunkText(text)
+      for chunk of chunks:
+        embedding = await getEmbedding(chunk.chunk)
+        vectorStore.upsertChunk(filePath, chunk.index, chunk.chunk, 
+                                embedding, hash)
+    Return: { indexed, skipped, errors }
+  
+  async searchSemantic(query, topK, directoryFilter, vectorStore):
+    queryEmbedding = await getEmbedding(query)
+    results = vectorStore.search(queryEmbedding, topK, directoryFilter)
+    Return results with excerpts
+
+---
+
+## SERVER — src/webapp/server/services/genAI.js
+
+Import: OllamaClient, ModelRouter, DocReader, fs-extra
+
+GenAIService class:
+
+  async generateDocument(prompt, contextFiles, outputPath, ollamaClient, modelRouter):
+    model = await modelRouter.selectModel('generate')
+    contextTexts = await Promise.all(contextFiles.map(f => docReader.extractText(f)))
+    systemPrompt = "You are a document writer. Generate well-structured, 
+                   professional content based on the user's instructions and 
+                   any provided context. Output clean markdown."
+    contextSection = contextTexts.map((t,i) => 
+      `Context from ${contextFiles[i]}:\n${t.text.slice(0,2000)}`).join('\n\n')
+    messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `${contextSection}\n\nInstruction: ${prompt}` }
+    ]
+    response = await ollamaClient.chat(model, messages)
+    content = response.message.content
+    await fs.outputFile(outputPath, content)
+    Return: { success: true, outputPath, wordCount: content.split(' ').length, model }
+
+  async transformDocument(inputPath, instruction, outputPath, ollamaClient, modelRouter):
+    model = await modelRouter.selectModel('transform')
+    sourceText = await docReader.extractText(inputPath)
+    systemPrompt = "You are a document editor. Transform the provided document 
+                   according to the user's instruction. Preserve the meaning 
+                   and structure unless instructed otherwise."
+    messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: 
+        `Document:\n${sourceText.text}\n\nInstruction: ${instruction}` }
+    ]
+    response = await ollamaClient.chat(model, messages)
+    content = response.message.content
+    finalPath = outputPath || inputPath.replace(/(\.\w+)$/, '_transformed$1')
+    await fs.outputFile(finalPath, content)
+    Return: { success: true, outputPath: finalPath, model }
+
+  async synthesizeDocuments(inputPaths, instruction, outputPath, ollamaClient, modelRouter):
+    model = await modelRouter.selectModel('synthesize')
+    texts = await Promise.all(inputPaths.map(p => docReader.extractText(p)))
+    combined = texts.map((t,i) => 
+      `=== ${path.basename(inputPaths[i])} ===\n${t.text.slice(0,1500)}`
+    ).join('\n\n')
+    messages = [
+      { role: 'system', content: "You synthesize multiple documents. Be accurate, 
+                                  cite which document supports each point." },
+      { role: 'user', content: `${combined}\n\nTask: ${instruction}` }
+    ]
+    response = await ollamaClient.chat(model, messages)
+    content = response.message.content
+    if (outputPath) await fs.outputFile(outputPath, content)
+    Return: { success: true, content, outputPath, sourceFiles: inputPaths, model }
+
+  async extractStructuredData(inputPath, goal, outputPath, ollamaClient, modelRouter):
+    model = await modelRouter.selectModel('extract')
+    sourceText = await docReader.extractText(inputPath)
+    messages = [
+      { role: 'system', content: "Extract structured data from documents. 
+                                  Return ONLY valid JSON array. No explanation." },
+      { role: 'user', content: 
+        `Document:\n${sourceText.text}\n\nExtract: ${goal}\n
+         Return as JSON array of objects.` }
+    ]
+    response = await ollamaClient.chat(model, messages)
+    try:
+      data = JSON.parse(response.message.content)
+    catch:
+      data = [{ raw: response.message.content }]
+    if outputPath:
+      if outputPath.endsWith('.csv'): write CSV
+      else: write JSON
+    Return: { success: true, data, recordCount: data.length, outputPath, model }
+
+  async autoRenameFile(filePath, ollamaClient, modelRouter):
+    model = await modelRouter.selectModel('file_op')
+    text = await docReader.extractText(filePath)
+    preview = text.text.slice(0, 800)
+    ext = path.extname(filePath)
+    messages = [
+      { role: 'user', content: 
+        `Based on this content, suggest a descriptive filename (no extension, 
+         use_underscores, lowercase, max 40 chars):\n\n${preview}\n\n
+         Return ONLY the filename, nothing else.` }
+    ]
+    response = await ollamaClient.chat(model, messages)
+    suggestion = response.message.content.trim().replace(/[^a-z0-9_-]/gi, '_')
+    Return: { original: path.basename(filePath), suggestion: suggestion + ext, model }
+
+  async suggestOrganization(directoryPath, ollamaClient, modelRouter):
+    model = await modelRouter.selectModel('doc_qa')
+    files = fs.readdirSync(directoryPath)
+    fileList = files.slice(0, 50).join('\n')
+    messages = [
+      { role: 'user', content: 
+        `Suggest a folder organization for these files. Return JSON with 
+         { folders: [{ name, purpose, files: [] }] }\n\nFiles:\n${fileList}` }
+    ]
+    response = await ollamaClient.chat(model, messages)
+    Return: { suggestion: response.message.content, model }
+
+---
+
+## SERVER — src/webapp/server/routes/chat.js
+
+POST /api/chat
+Body: { message, history, workingDirectory, modelOverride }
+
+1. taskType = modelRouter.classifyTask(message)
+2. model = modelOverride || await modelRouter.selectModel(taskType)
+3. systemPrompt = buildSystemPrompt(workingDirectory)
+4. messages = [...history, { role: 'user', content: message }]
+5. response = await ollama.chat(model, [systemPrompt, ...messages], fileTools)
+6. if response has tool_calls:
+   a. toolCall = response.message.tool_calls[0]
+   b. isDestructive = DESTRUCTIVE_TOOLS.includes(toolCall.function.name)
+   c. if isDestructive:
+      return { requiresConfirmation: true, pendingAction: toolCall, 
+               model, message: "I need your confirmation before proceeding." }
+   d. else:
+      result = await fileOps.executeTool(toolCall.function.name, toolCall.function.arguments)
+      followUp = await ollama.chat(model, [...messages, 
+        { role: 'tool', content: JSON.stringify(result) }])
+      return { response: followUp.message.content, toolsUsed: [toolCall.function.name], model }
+7. else:
+   return { response: response.message.content, toolsUsed: [], model }
+
+POST /api/chat/confirm
+Body: { pendingAction, workingDirectory }
+1. Execute pendingAction via fileOps.executeTool
+2. Return { success, result }
+
+buildSystemPrompt(workingDirectory):
+  return {
+    role: 'system',
+    content: `You are Vault AI, a local AI assistant for file and document management.
+    
+    Current working directory: ${workingDirectory}
+    
+    Rules:
+    - Use provided tools to perform all file operations
+    - For destructive operations, the system will ask for confirmation automatically
+    - Always confirm what you did after completing an operation
+    - When reading documents, quote relevant sections in your answer
+    - If a file path is ambiguous, use list_directory to verify it exists first
+    - Be concise and action-oriented
+    - Never make up file paths or pretend files exist
+    - All your operations run locally — user's data never leaves their machine`
+  }
+
+---
+
+## SERVER — src/webapp/server/routes/files.js
+
+GET /api/files?path=
+  Return directory listing via fileOps.executeTool('list_directory', { path })
+
+GET /api/files/read?path=
+  Return file content via docReader.extractText(path)
+
+POST /api/files/index
+  Body: { directory }
+  await embeddingsService.indexDirectory(directory, vectorStore, docReader)
+  Return: { indexed, skipped, errors }
+
+GET /api/files/indexed
+  Return: vectorStore.getIndexedFiles()
+
+---
+
+## SERVER — src/webapp/server/routes/models.js
+
+GET /api/models
+  models = await ollama.listModels()
+  Annotate each with assigned role from ModelRouter
+  Return: { models: [{ name, size, role, status }], connected: boolean }
+
+GET /api/models/status
+  Return: { connected: boolean, baseUrl: 'http://localhost:11434' }
+
+---
+
+## SERVER — src/webapp/server/routes/search.js
+
+GET /api/search?q=&dir=&limit=10
+  results = await embeddingsService.searchSemantic(q, limit, dir, vectorStore)
+  Return: { results: [{ filePath, excerpt, score }], query: q }
+
+---
+
+## SERVER — src/webapp/server/routes/generate.js
+
+POST /api/generate/document
+  Body: { prompt, contextFiles, outputPath }
+  result = await genAI.generateDocument(prompt, contextFiles, outputPath, ollama, router)
+  Return result
+
+POST /api/generate/transform
+  Body: { inputPath, instruction, outputPath }
+  result = await genAI.transformDocument(inputPath, instruction, outputPath, ollama, router)
+  Return result
+
+POST /api/generate/synthesize
+  Body: { inputPaths, instruction, outputPath }
+  result = await genAI.synthesizeDocuments(inputPaths, instruction, outputPath, ollama, router)
+  Return result
+
+POST /api/generate/extract
+  Body: { inputPath, goal, outputPath }
+  result = await genAI.extractStructuredData(inputPath, goal, outputPath, ollama, router)
+  Return result
+
+POST /api/generate/autorename
+  Body: { filePath }
+  result = await genAI.autoRenameFile(filePath, ollama, router)
+  Return result (suggestion only — do NOT rename)
+
+POST /api/generate/suggest-organization
+  Body: { directoryPath }
+  result = await genAI.suggestOrganization(directoryPath, ollama, router)
+  Return result (suggestion only — do NOT move files)
+
+---
+
+## CLIENT — src/webapp/client/src/App.jsx
+
+Two-panel layout, full viewport height:
+
+```jsx
+<div className="flex h-screen bg-white">
+  <FileBrowser />                    // 280px left panel
+  <div className="flex-1 flex flex-col">
+    <Header />                       // model status bar
+    <div className="flex-1 flex">
+      <ChatPanel />                  // main chat (default)
+      <GeneratePanel />              // collapsible right panel
+    </div>
+    <StatusBar />
+  </div>
+</div>
+```
+
+---
+
+## CLIENT — src/webapp/client/src/store/useStore.js (Zustand)
+
+State:
+  messages: []              // { id, role, content, model, toolsUsed, timestamp }
+  workingDirectory: ''      // current dir path, init to user home
+  availableModels: []       // from /api/models
+  ollamaConnected: false    // from /api/models/status
+  isLoading: false          // while waiting for AI response
+  pendingAction: null       // destructive action awaiting confirmation
+  indexedDirectories: []    // directories indexed for semantic search
+  activeTab: 'chat'         // 'chat' | 'generate'
+
+Actions:
+  addMessage, updateMessage, clearMessages
+  setWorkingDirectory
+  setModels, setOllamaConnected
+  setLoading
+  setPendingAction, clearPendingAction
+  setIndexedDirectories
+  setActiveTab
+
+---
+
+## CLIENT — src/webapp/client/src/components/Chat.jsx
+
+- On mount: check Ollama status via GET /api/models/status
+  If not connected: show banner "Ollama not running — start Ollama to use Vault AI"
+- Message list scrolls to bottom on new message
+- Send button disabled while isLoading
+- On send:
+  1. Add user message to store
+  2. setLoading(true)
+  3. POST /api/chat { message, history: messages, workingDirectory }
+  4. If requiresConfirmation: setPendingAction(pendingAction)
+  5. Else: add AI message, setLoading(false)
+- Show ConfirmDialog when pendingAction is set
+- Input: Enter to send, Shift+Enter for newline
+- Typing indicator: animated "..." while loading
+
+---
+
+## CLIENT — src/webapp/client/src/components/MessageBubble.jsx
+
+User message:
+  Right-aligned, bg-blue-600 text-white, rounded-2xl px-4 py-2 max-w-[75%]
+
+AI message:
+  Left-aligned, white card with gray border, rounded-2xl
+  Content rendered as markdown (react-markdown)
+  Below content: 
+    Small gray text: "via {model}" 
+    If toolsUsed.length > 0: collapsible "Actions taken" section
+      List each tool used as a badge
+
+---
+
+## CLIENT — src/webapp/client/src/components/FileBrowser.jsx
+
+- Fetch /api/files?path={workingDirectory} on load and when path changes
+- Show path breadcrumbs at top (clickable segments)
+- List: folders first (folder icon), then files (type-based icon)
+- File icons by extension: pdf (red), docx (blue), txt/md (gray), 
+  image (green), code (purple), other (gray)
+- Click folder: navigate into it (update workingDirectory in store)
+- Click file: show file info tooltip (name, size, modified)
+- Double-click file: call onFileSelect(filePath) → adds "Read {filename}" to chat
+- Right-click context menu:
+    Ask AI about this → "What is in {filename}?"
+    Rename → inline rename input
+    Move to... → path input dialog
+    Delete → triggers confirmation
+- Refresh button: re-fetch current directory
+- Show item count: "12 items"
+
+---
+
+## CLIENT — src/webapp/client/src/components/ModelPanel.jsx
+
+Header bar showing:
+- Green/red dot: Ollama connection status
+- "3 models active" badge
+- Dropdown on click showing:
+    Each model with its role badge (File Ops / Document / Generation / Vision / Code)
+    Status: loaded / idle
+    Option to override model for next message
+
+---
+
+## CLIENT — src/webapp/client/src/components/ConfirmDialog.jsx
+
+Modal overlay (semi-transparent backdrop):
+- Title: "Confirm Action" in red if destructive
+- Description: "Vault AI wants to: {action description}"
+- Affected items: bulleted list of files/paths
+- Two buttons:
+    "Cancel" — gray, calls clearPendingAction()
+    "Confirm — Do it" — red background, calls POST /api/chat/confirm
+
+---
+
+## CLIENT — src/webapp/client/src/components/GeneratePanel.jsx
+
+Side panel with 4 tabs: Create | Transform | Synthesize | Extract
+
+CREATE TAB:
+  Textarea: "Describe what you want to generate..."
+  Multi-file picker: "Add context files" (shows file browser modal)
+  Output path input with folder picker
+  Generate button
+  Preview pane: shows streaming generated content
+  Save button: appears after generation completes
+
+TRANSFORM TAB:
+  File picker: select source file
+  Quick action buttons: Summarize | Simplify | Translate | Expand | Rewrite | Shorten
+  If Translate: language selector dropdown
+  Custom instruction textarea (optional)
+  Preview: side-by-side original preview vs transformed
+  Save As button
+
+SYNTHESIZE TAB:
+  Multi-file picker: add 2+ files
+  Quick action buttons: Compare | Merge | Find Contradictions | Extract Themes
+  Custom instruction textarea
+  Preview pane
+  Save output button
+
+EXTRACT TAB:
+  File picker: source document
+  Quick type buttons: Dates | Names & Contacts | Prices | Action Items | Key Terms
+  Custom goal textarea
+  Preview as table
+  Export buttons: CSV | JSON
+
+---
+
+## UI DESIGN SYSTEM
+
+Colors (Tailwind classes):
+  Background:       bg-white
+  Panel:            bg-gray-50
+  Border:           border-gray-200
+  Primary:          bg-blue-600 text-white
+  User bubble:      bg-blue-600 text-white
+  AI card:          bg-white border border-gray-200
+  Destructive:      bg-red-600 text-white / text-red-600
+  Success:          text-green-600
+  Text primary:     text-gray-900
+  Text secondary:   text-gray-500
+  Hover:            hover:bg-gray-100
+
+Typography:
+  Font: Inter (import from Google Fonts in index.html)
+  Body: text-sm
+  Heading: text-base font-semibold
+
+Spacing: consistent 4px grid (Tailwind p-2, p-4, gap-2, gap-4)
+Radius: rounded-lg (8px) for cards, rounded-2xl (16px) for bubbles
+Shadow: shadow-sm for panels and cards
+
+Icons: lucide-react
+  Folder: FolderIcon
+  File: FileTextIcon  
+  Move: MoveIcon
+  Trash: Trash2Icon
+  Search: SearchIcon
+  Model: CpuIcon
+  Lock: LockIcon (privacy badge)
+  Send: SendIcon
+  Plus: PlusIcon
+
+---
+
+## PACKAGE.JSON
+
+src/webapp/package.json with workspaces: ["client", "server"]
+
+Server dependencies:
+  express, cors, dotenv, axios
+  better-sqlite3
+  pdf-parse, mammoth
+  fs-extra, trash
+
+Server devDependencies:
+  nodemon
+
+Client dependencies:
+  react, react-dom
+  zustand
+  axios
+  lucide-react
+  react-markdown
+  tailwindcss, autoprefixer, postcss
+
+Client devDependencies:
+  vite, @vitejs/plugin-react
+
+Scripts:
+  "dev": runs both server (nodemon) and client (vite) concurrently
+  "build": builds client
+  "start": runs production server
+
+---
+
+## WELCOME SCREEN
+
+Show on first load if Ollama is not connected:
+
+```
+┌─────────────────────────────────────────┐
+│          Welcome to Vault AI            │
+│    Your files. Your AI. Your privacy.   │
+│                                         │
+│  ⚠ Ollama is not running               │
+│                                         │
+│  To use Vault AI, start Ollama:         │
+│  1. Install Ollama from ollama.com      │
+│  2. Run: ollama serve                   │
+│  3. Pull a model:                       │
+│     ollama pull llama3.2                │
+│     ollama pull nomic-embed-text        │
+│                                         │
+│  [Retry Connection]                     │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## IMPORTANT REQUIREMENTS
+
+1. NEVER hard-delete files — always use trash package (moves to OS trash)
+
+2. ALL file paths must be validated:
+   - Resolve to absolute path
+   - Reject any path containing '..' after resolution  
+   - Reject paths outside user's home directory
+
+3. Destructive operations (delete, bulk ops > 3 files) ALWAYS show 
+   ConfirmDialog before execution
+
+4. App must work with just ONE Ollama model installed — 
+   ModelRouter falls back to whatever is available
+
+5. Zero external HTTP calls — only localhost:11434 for Ollama
+
+6. Show Ollama connection status prominently — red banner if disconnected
+
+7. Stream long generation outputs via SSE — don't make users wait for 
+   full response before seeing content
+
+8. Working directory context is sent with every chat message so the AI 
+   knows where it is in the file system
+```
