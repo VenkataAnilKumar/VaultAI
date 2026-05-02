@@ -1,51 +1,50 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   LockIcon, MessageSquareIcon, SearchIcon, SparklesIcon, CpuIcon,
   PlugIcon, ServerIcon, ShieldCheckIcon, ArrowRightIcon, CheckIcon,
   FolderIcon, FileTextIcon, GitBranchIcon, DatabaseIcon, BookmarkIcon,
-  MailIcon, ZapIcon, BotIcon, ChevronDownIcon, ExternalLinkIcon,
-  GlobeIcon, CodeIcon, UsersIcon, ClockIcon
+  MailIcon, ZapIcon, BotIcon, StarIcon, UsersIcon, CodeIcon,
+  ChevronRightIcon, GlobeIcon, TrendingUpIcon, LayersIcon
 } from 'lucide-react';
 
-/* ─── Reveal on scroll ─── */
+/* ── Scroll reveal ── */
 function useReveal() {
   useEffect(() => {
     const els = document.querySelectorAll('.reveal');
     const obs = new IntersectionObserver(
-      (entries) => entries.forEach(e => e.isIntersecting && e.target.classList.add('visible')),
-      { threshold: 0.12 }
+      entries => entries.forEach(e => e.isIntersecting && e.target.classList.add('visible')),
+      { threshold: 0.1 }
     );
     els.forEach(el => obs.observe(el));
     return () => obs.disconnect();
   }, []);
 }
 
-/* ─── NAV ─── */
+/* ── NAV ── */
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 40);
+    const h = () => setScrolled(window.scrollY > 30);
     window.addEventListener('scroll', h);
     return () => window.removeEventListener('scroll', h);
   }, []);
-
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? 'glass border-b border-white/5 py-3' : 'py-5'}`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-xl border-b border-gray-100 shadow-sm py-3' : 'bg-transparent py-5'}`}>
       <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <LockIcon size={16} className="text-white" />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
+            <LockIcon size={17} className="text-white" />
           </div>
-          <span className="font-bold text-white text-lg tracking-tight">Vault AI</span>
+          <span className="font-black text-gray-900 text-xl tracking-tight">Vault <span className="text-gradient-blue">AI</span></span>
         </div>
-        <div className="hidden md:flex items-center gap-8 text-sm text-white/50">
-          {['Features', 'How it Works', 'Privacy', 'Roadmap'].map(l => (
-            <a key={l} href={`#${l.toLowerCase().replace(/\s+/g, '-')}`}
-              className="hover:text-white transition-colors duration-200">{l}</a>
+        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-500">
+          {['Features', 'Privacy', 'Roadmap'].map(l => (
+            <a key={l} href={`#${l.toLowerCase()}`} className="hover:text-gray-900 transition-colors">{l}</a>
           ))}
         </div>
         <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer"
-          className="btn-primary text-white text-sm font-semibold px-5 py-2.5 rounded-xl flex items-center gap-2">
+          className="btn-cta text-white text-sm font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-lg">
           Open App <ArrowRightIcon size={14} />
         </a>
       </div>
@@ -53,88 +52,144 @@ function Nav() {
   );
 }
 
-/* ─── HERO ─── */
+/* ── TICKER ── */
+const TICKER_ITEMS = [
+  '🔒 100% Local Processing', '⚡ 6 Specialized AI Agents', '🔍 Semantic Search',
+  '📄 Document Generation', '🔌 5 Local Connectors', '🛡️ Zero Data Egress',
+  '🤖 Multi-Model Routing', '🔗 MCP Protocol Support', '🗂️ Natural Language Files',
+  '✅ Works Fully Offline',
+];
+function Ticker() {
+  const items = [...TICKER_ITEMS, ...TICKER_ITEMS];
+  return (
+    <div className="overflow-hidden py-3" style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
+      <div className="flex gap-8 animate-ticker whitespace-nowrap">
+        {items.map((item, i) => (
+          <span key={i} className="text-white/90 text-sm font-medium flex-shrink-0">{item}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── HERO ── */
 function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
-      {/* Orbs */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="animate-orb-1 absolute top-1/4 left-1/4 w-96 h-96 rounded-full"
-          style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 70%)' }} />
-        <div className="animate-orb-2 absolute bottom-1/4 right-1/3 w-80 h-80 rounded-full"
-          style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.16) 0%, transparent 70%)' }} />
-        <div className="animate-orb-3 absolute top-1/3 right-1/4 w-64 h-64 rounded-full"
-          style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 70%)' }} />
-        {/* Grid */}
-        <div className="absolute inset-0 opacity-[0.025]"
-          style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '64px 64px' }} />
+    <section className="relative pt-32 pb-20 overflow-hidden">
+      {/* Background blobs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full opacity-10"
+          style={{ background: 'radial-gradient(circle, #7c3aed, transparent)' }} />
+        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full opacity-10"
+          style={{ background: 'radial-gradient(circle, #2563eb, transparent)' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] opacity-5"
+          style={{ background: 'radial-gradient(ellipse, #ec4899, transparent)' }} />
+        {/* Decorative dots grid */}
+        <div className="absolute inset-0 opacity-[0.03]"
+          style={{ backgroundImage: 'radial-gradient(circle, #0f0f1a 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
       </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
+      <div className="max-w-6xl mx-auto px-6 relative">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 glass px-4 py-1.5 rounded-full mb-8 text-sm">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse-slow" />
-          <span className="text-white/60">100% Local · Zero Data Egress · Open Architecture</span>
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border-2"
+            style={{ background: 'linear-gradient(135deg, #ede9fe, #dbeafe)', borderColor: '#c4b5fd', color: '#5b21b6' }}>
+            <SparklesIcon size={14} />
+            Privacy-First Local AI · Built for 2026
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-1" />
+          </div>
         </div>
 
         {/* Headline */}
-        <h1 className="font-black leading-[0.95] tracking-tight mb-6"
-          style={{ fontSize: 'clamp(52px, 9vw, 104px)' }}>
-          <span className="text-white block">Your Files.</span>
-          <span className="text-gradient block">Your AI.</span>
-          <span className="text-white block">Your Privacy.</span>
-        </h1>
-
-        <p className="text-white/50 text-xl max-w-2xl mx-auto leading-relaxed mb-12"
-          style={{ fontSize: 'clamp(16px, 2.5vw, 20px)' }}>
-          The AI-native file platform that runs entirely on your machine.
-          Natural language file management, semantic search, document generation — 
-          powered by local models. <span className="text-white/80 font-medium">No cloud. No subscriptions. No compromise.</span>
-        </p>
+        <div className="text-center max-w-4xl mx-auto mb-8">
+          <h1 className="font-black leading-[1] tracking-tight mb-6"
+            style={{ fontSize: 'clamp(48px, 8vw, 96px)' }}>
+            <span className="text-gray-900">Your Files.</span><br />
+            <span className="text-gradient-rainbow">Your AI.</span><br />
+            <span className="text-gray-900">Your Privacy.</span>
+          </h1>
+          <p className="text-gray-500 text-xl leading-relaxed max-w-2xl mx-auto">
+            The AI-native file platform that runs{' '}
+            <span className="font-bold text-gray-900">entirely on your machine</span>.
+            Manage, search, and generate documents with local AI.{' '}
+            <span className="text-gradient-blue font-bold">No cloud. No subscriptions. No compromise.</span>
+          </p>
+        </div>
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
           <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer"
-            className="btn-primary text-white font-bold px-8 py-4 rounded-2xl text-base flex items-center gap-2.5 glow-blue">
-            <SparklesIcon size={18} />
-            Launch Vault AI
-            <ArrowRightIcon size={16} />
+            className="btn-cta text-white font-black px-10 py-4 rounded-2xl text-lg flex items-center gap-3 shadow-2xl"
+            style={{ boxShadow: '0 20px 60px rgba(37,99,235,0.35)' }}>
+            <SparklesIcon size={20} />
+            Launch Vault AI Free
+            <ArrowRightIcon size={18} />
           </a>
           <a href="#features"
-            className="glass text-white/70 hover:text-white font-semibold px-8 py-4 rounded-2xl text-base flex items-center gap-2.5 transition-all duration-200 hover:border-white/15">
-            See Features
-            <ChevronDownIcon size={16} />
+            className="text-gray-700 font-bold px-8 py-4 rounded-2xl text-base flex items-center gap-2 border-2 border-gray-200 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 bg-white shadow-sm">
+            See All Features
+            <ChevronRightIcon size={16} />
           </a>
         </div>
 
-        {/* Mock terminal UI */}
-        <div className="animate-float max-w-2xl mx-auto">
-          <div className="glass rounded-2xl overflow-hidden border border-white/10"
-            style={{ boxShadow: '0 48px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.1), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
-            {/* Window chrome */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 bg-white/[0.02]">
+        {/* Hero visual — mock UI cards */}
+        <div className="relative max-w-4xl mx-auto">
+          {/* Floating tags */}
+          <div className="animate-float absolute -left-4 top-12 z-10 bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-2.5 border border-gray-100">
+            <div className="w-8 h-8 rounded-xl bg-green-100 flex items-center justify-center">
+              <ShieldCheckIcon size={16} className="text-green-600" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-gray-900">Zero Data Egress</div>
+              <div className="text-xs text-gray-400">All local · verified</div>
+            </div>
+          </div>
+          <div className="animate-float2 absolute -right-4 top-20 z-10 bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-2.5 border border-gray-100">
+            <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center">
+              <CpuIcon size={16} className="text-purple-600" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-gray-900">6 AI Agents Active</div>
+              <div className="text-xs text-gray-400">llama3.2 · mistral</div>
+            </div>
+          </div>
+          <div className="animate-float absolute right-8 -bottom-4 z-10 bg-white rounded-2xl shadow-xl px-4 py-2.5 flex items-center gap-2 border border-gray-100">
+            <span className="text-green-500 text-lg">✓</span>
+            <div className="text-xs font-bold text-gray-900">7 files moved successfully</div>
+          </div>
+
+          {/* Main chat window */}
+          <div className="rounded-3xl overflow-hidden shadow-2xl border border-gray-200 bg-white"
+            style={{ boxShadow: '0 40px 100px rgba(0,0,0,0.12), 0 0 0 1px rgba(37,99,235,0.08)' }}>
+            {/* Title bar */}
+            <div className="flex items-center gap-2 px-5 py-4 bg-gray-50 border-b border-gray-100">
               <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-red-500/70" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
-                <div className="w-3 h-3 rounded-full bg-green-500/70" />
+                <div className="w-3 h-3 rounded-full bg-red-400" />
+                <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                <div className="w-3 h-3 rounded-full bg-green-400" />
               </div>
               <div className="flex-1 text-center">
-                <span className="text-white/30 text-xs font-mono">vault-ai — chat</span>
+                <span className="text-gray-400 text-xs font-medium">Vault AI — Chat</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                <span className="text-xs text-white/30">Local</span>
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 rounded-lg">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                <span className="text-xs font-medium text-green-700">Local</span>
               </div>
             </div>
-            {/* Chat messages */}
-            <div className="p-5 space-y-4 text-left">
-              <ChatLine role="user" text="Move all invoices from Downloads to Documents/Finance/2024 and rename them by date" />
-              <ChatLine role="ai" text="Found 7 invoice files in Downloads. I'll move them to Documents/Finance/2024 and rename each by its invoice date. This will affect 7 files — confirm?" model="llama3.2:3b" />
-              <div className="flex gap-2 pl-10">
-                <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-500/15 text-green-400 border border-green-500/20 cursor-pointer hover:bg-green-500/25 transition-colors">✓ Confirm</span>
-                <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/40 border border-white/10">Cancel</span>
+            {/* Messages */}
+            <div className="p-6 space-y-4 bg-gray-50/30">
+              <HeroMsg role="user" text='Move all invoices from Downloads to Documents/Finance/2024, rename by date' />
+              <HeroMsg role="ai" text="Found 7 invoice files. I'll move them to Documents/Finance/2024 and rename each by invoice date. Ready to execute — confirm?" model="llama3.2:3b" />
+              <div className="flex gap-2 pl-12">
+                <button className="px-4 py-2 rounded-xl text-sm font-bold text-white flex items-center gap-1.5"
+                  style={{ background: 'linear-gradient(135deg, #059669, #0891b2)' }}>
+                  <CheckIcon size={13} /> Confirm & Execute
+                </button>
+                <button className="px-4 py-2 rounded-xl text-sm font-medium text-gray-500 bg-white border border-gray-200">
+                  Cancel
+                </button>
               </div>
-              <ChatLine role="ai" text="Done. Moved 7 files → Documents/Finance/2024. Renamed: invoice_2024-01-15.pdf, invoice_2024-02-03.pdf..." model="llama3.2:3b" done />
+              <HeroMsg role="ai" text="Done! ✅ Moved 7 invoices → Documents/Finance/2024. Renamed: invoice_2024-01-15.pdf, invoice_2024-02-08.pdf, invoice_2024-03-22.pdf..." model="llama3.2:3b" done />
             </div>
           </div>
         </div>
@@ -142,28 +197,31 @@ function Hero() {
     </section>
   );
 }
-
-function ChatLine({ role, text, model, done }) {
+function HeroMsg({ role, text, model, done }) {
   const isUser = role === 'user';
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'items-start gap-2.5'}`}>
+    <div className={`flex items-end gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
       {!isUser && (
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-          <LockIcon size={13} className="text-white" />
+        <div className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
+          <LockIcon size={14} className="text-white" />
         </div>
       )}
-      <div className={`max-w-sm ${isUser ? 'bg-blue-600/80 rounded-2xl rounded-tr-sm px-4 py-2.5' : 'flex-1'}`}>
+      <div className={`max-w-sm ${isUser ? 'ml-auto' : ''}`}>
         {isUser ? (
-          <p className="text-sm text-white">{text}</p>
+          <div className="px-4 py-3 rounded-2xl rounded-br-sm text-sm text-white font-medium"
+            style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
+            {text}
+          </div>
         ) : (
-          <div className="glass rounded-2xl rounded-tl-sm px-4 py-3">
-            <p className="text-sm text-white/80 leading-relaxed">{text}
-              {!done && <span className="cursor text-blue-400 ml-0.5">|</span>}
+          <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm border border-gray-100 shadow-sm">
+            <p className="text-sm text-gray-700 leading-relaxed">
+              {text}{!done && <span className="cursor-blink text-blue-500 ml-0.5">|</span>}
             </p>
             {model && (
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs text-white/25 font-mono">{model}</span>
-                {done && <span className="text-xs text-green-400/70">✓ complete</span>}
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="text-xs text-gray-400 font-mono">{model}</span>
+                {done && <span className="text-xs text-green-600 font-medium">● complete</span>}
               </div>
             )}
           </div>
@@ -173,180 +231,105 @@ function ChatLine({ role, text, model, done }) {
   );
 }
 
-/* ─── STATS ─── */
+/* ── SOCIAL PROOF / STATS ── */
 function Stats() {
-  const stats = [
-    { value: '100%', label: 'Local Processing', sub: 'Zero data leaves your device' },
-    { value: '6', label: 'Specialized AI Agents', sub: 'Right model for every task' },
-    { value: '5+', label: 'Data Connectors', sub: 'Obsidian, SQLite, Git & more' },
+  const items = [
+    { v: '100%', label: 'Local Processing', color: '#2563eb', bg: '#dbeafe' },
+    { v: '<2min', label: 'Time to First File Op', color: '#7c3aed', bg: '#ede9fe' },
+    { v: '6', label: 'Specialized AI Agents', color: '#ec4899', bg: '#fce7f3' },
+    { v: '13', label: 'MCP Tools Exposed', color: '#059669', bg: '#d1fae5' },
+    { v: '5+', label: 'Local Data Connectors', color: '#ea580c', bg: '#ffedd5' },
+    { v: '0', label: 'External Network Calls', color: '#0891b2', bg: '#cffafe' },
   ];
   return (
-    <section className="py-12 border-y border-white/[0.04]">
-      <div className="max-w-5xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-3 gap-8">
-        {stats.map(s => (
-          <div key={s.label} className="text-center reveal">
-            <div className="text-gradient font-black text-4xl mb-1">{s.value}</div>
-            <div className="text-white font-semibold text-sm mb-0.5">{s.label}</div>
-            <div className="text-white/35 text-xs">{s.sub}</div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ─── PROBLEM ─── */
-function Problem() {
-  const before = [
-    'Upload sensitive files to ChatGPT or Claude',
-    'Your documents stored on foreign servers',
-    'Monthly API fees for every token you send',
-    'One model for everything — wrong tool for the job',
-    'No file operations — read-only AI assistants',
-    'Privacy "policies" you can\'t audit or verify',
-  ];
-  const after = [
-    'AI runs entirely on localhost via Ollama',
-    'Your files never leave your machine — ever',
-    'One-time setup, no ongoing cloud costs',
-    'Auto-routing: best model per task type',
-    'Full file management: move, rename, generate',
-    'Open architecture — fully auditable by design',
-  ];
-
-  return (
-    <section id="how-it-works" className="py-28 relative">
-      <div className="max-w-5xl mx-auto px-6">
-        <div className="text-center mb-16 reveal">
-          <div className="text-blue-400 text-sm font-semibold uppercase tracking-widest mb-4">The Problem</div>
-          <h2 className="font-black text-white text-4xl md:text-5xl tracking-tight mb-4">
-            Cloud AI asks for<br /><span className="text-gradient">the one thing you can't give.</span>
-          </h2>
-          <p className="text-white/45 text-lg max-w-xl mx-auto">
-            Attorneys, doctors, engineers, and compliance teams cannot upload confidential documents to cloud AI. Vault AI was built for them.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 reveal">
-          {/* Before */}
-          <div className="glass rounded-2xl p-7 border border-red-500/10">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-red-400 font-semibold text-sm uppercase tracking-wider">Cloud AI</span>
+    <section className="py-16 bg-white">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {items.map((s, i) => (
+            <div key={i} className="card-hover reveal text-center p-5 rounded-2xl border border-gray-100 shadow-sm" style={{ transitionDelay: `${i * 60}ms` }}>
+              <div className="text-3xl font-black mb-1" style={{ color: s.color }}>{s.v}</div>
+              <div className="text-xs text-gray-500 font-medium leading-tight">{s.label}</div>
             </div>
-            <div className="space-y-3">
-              {before.map(item => (
-                <div key={item} className="flex items-start gap-3">
-                  <span className="text-red-500/60 mt-0.5 flex-shrink-0">✗</span>
-                  <span className="text-white/45 text-sm">{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* After */}
-          <div className="rounded-2xl p-7 relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(124,58,237,0.06) 100%)', border: '1px solid rgba(59,130,246,0.2)' }}>
-            <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-20"
-              style={{ background: 'radial-gradient(circle, #3b82f6, transparent)' }} />
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-2 h-2 rounded-full bg-blue-400" />
-              <span className="text-blue-400 font-semibold text-sm uppercase tracking-wider">Vault AI</span>
-            </div>
-            <div className="space-y-3">
-              {after.map(item => (
-                <div key={item} className="flex items-start gap-3">
-                  <span className="text-blue-400 mt-0.5 flex-shrink-0">✓</span>
-                  <span className="text-white/80 text-sm">{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-/* ─── FEATURES ─── */
+/* ── FEATURES ── */
 const FEATURES = [
   {
-    icon: MessageSquareIcon,
-    color: '#3b82f6',
-    title: 'Natural Language File Management',
-    desc: 'Move, copy, rename, delete, and organize files by typing instructions. "Move all invoices to Finance/2024 and rename by date" — done.',
-    examples: ['Move 500 files in seconds', 'Bulk rename by content', 'Smart folder organization'],
+    icon: MessageSquareIcon, color: '#2563eb', bg: '#dbeafe', lightBg: '#eff6ff',
+    title: 'Natural Language File Ops',
+    desc: 'Move, copy, rename, delete, and organize files just by typing. "Move all invoices to Finance and rename by date" — done in seconds.',
+    tags: ['Move · Copy · Rename', 'Bulk operations', 'Smart confirmation'],
   },
   {
-    icon: SearchIcon,
-    color: '#7c3aed',
+    icon: SearchIcon, color: '#7c3aed', bg: '#ede9fe', lightBg: '#f5f3ff',
     title: 'Semantic Search',
-    desc: 'Search across all your documents by meaning — not just keywords. Find "termination clauses" across 1,000 contracts without remembering exact words.',
-    examples: ['Vector embeddings, local only', 'Cross-document search', 'Source-cited results'],
+    desc: 'Search across all your documents by meaning, not keywords. Find "termination clauses" across 1,000 contracts without exact wording.',
+    tags: ['Local embeddings', 'Cross-doc search', 'Source citations'],
   },
   {
-    icon: SparklesIcon,
-    color: '#06b6d4',
+    icon: SparklesIcon, color: '#ec4899', bg: '#fce7f3', lightBg: '#fdf2f8',
     title: 'Document Generation',
-    desc: 'Create, transform, synthesize, and extract from documents. Generate a proposal from your notes. Translate a contract. Extract all dates to CSV.',
-    examples: ['Create from prompt', 'Transform & translate', 'Extract structured data'],
+    desc: 'Create, transform, synthesize, and extract. Generate a proposal from your notes. Translate a contract. Extract all dates to CSV.',
+    tags: ['Create from prompt', 'Transform & translate', 'Extract to CSV'],
   },
   {
-    icon: CpuIcon,
-    color: '#10b981',
+    icon: CpuIcon, color: '#059669', bg: '#d1fae5', lightBg: '#f0fdf4',
     title: 'Multi-Model Intelligence',
-    desc: 'Multiple specialized models via Ollama, auto-routed per task. File ops use a fast 3B model. Document Q&A uses your biggest reasoning model.',
-    examples: ['Auto model routing', '6 specialized agents', 'Works with 1 model installed'],
+    desc: 'Six specialized AI agents via Ollama, auto-routed per task. File ops use a fast 3B model. Q&A uses your largest reasoning model.',
+    tags: ['Auto model routing', '6 specialist agents', '1 model minimum'],
   },
   {
-    icon: PlugIcon,
-    color: '#f59e0b',
+    icon: PlugIcon, color: '#ea580c', bg: '#ffedd5', lightBg: '#fff7ed',
     title: 'Local Connectors',
-    desc: 'Query Obsidian notes, SQLite databases, Git repos, email archives, and browser bookmarks — all local, all private. No OAuth, no cloud.',
-    examples: ['Obsidian vault notes', 'NL → SQL queries', 'Git commit analysis'],
+    desc: 'Query Obsidian notes, SQLite databases, Git history, email archives, and browser bookmarks. All local, all private.',
+    tags: ['Obsidian · SQLite', 'Git · Email', 'Browser bookmarks'],
   },
   {
-    icon: ServerIcon,
-    color: '#ec4899',
-    title: 'MCP Protocol',
-    desc: 'Vault AI exposes its tools via MCP so Claude Desktop can call your vault. Or connect external MCP servers to extend Vault AI with web search & APIs.',
-    examples: ['Claude Desktop integration', 'SSE & stdio transports', 'External tool namespacing'],
+    icon: ServerIcon, color: '#0891b2', bg: '#cffafe', lightBg: '#ecfeff',
+    title: 'MCP Protocol Hub',
+    desc: 'Expose 13 Vault AI tools to Claude Desktop or Cursor via MCP. Or bring in external MCP servers — Brave Search, GitHub, Postgres.',
+    tags: ['Claude Desktop ready', 'SSE + stdio', 'External tool hub'],
   },
 ];
 
 function Features() {
   return (
-    <section id="features" className="py-28 relative">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-5"
-          style={{ background: 'radial-gradient(circle, #7c3aed, transparent)' }} />
-      </div>
-      <div className="max-w-6xl mx-auto px-6 relative">
+    <section id="features" className="py-24"
+      style={{ background: 'linear-gradient(180deg, #fff 0%, #f8faff 100%)' }}>
+      <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16 reveal">
-          <div className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">Capabilities</div>
-          <h2 className="font-black text-white text-4xl md:text-5xl tracking-tight mb-4">
-            Everything you need.<br /><span className="text-gradient">Nothing in the cloud.</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-5"
+            style={{ background: '#ede9fe', color: '#7c3aed' }}>
+            <LayersIcon size={13} /> Capabilities
+          </div>
+          <h2 className="font-black text-gray-900 tracking-tight mb-4"
+            style={{ fontSize: 'clamp(32px, 5vw, 52px)' }}>
+            Everything you need.<br />
+            <span className="text-gradient-blue">Nothing in the cloud.</span>
           </h2>
-          <p className="text-white/45 text-lg max-w-xl mx-auto">
-            A complete AI file intelligence platform — file management, search, generation, agents, connectors, and MCP — all running on localhost.
+          <p className="text-gray-500 text-lg max-w-xl mx-auto">
+            A complete AI file platform — management, search, generation, agents, connectors, and MCP — all on your localhost.
           </p>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {FEATURES.map((f, i) => (
-            <div key={f.title} className="feature-card glass rounded-2xl p-7 reveal" style={{ transitionDelay: `${i * 80}ms` }}>
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5 flex-shrink-0"
-                style={{ background: `${f.color}18`, border: `1px solid ${f.color}30` }}>
-                <f.icon size={20} style={{ color: f.color }} />
+            <div key={i} className="card-hover reveal rounded-2xl p-7 border border-gray-100 bg-white shadow-sm hover:shadow-xl transition-all duration-300"
+              style={{ transitionDelay: `${i * 80}ms` }}>
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5"
+                style={{ background: f.bg }}>
+                <f.icon size={22} style={{ color: f.color }} />
               </div>
-              <h3 className="font-bold text-white text-base mb-2">{f.title}</h3>
-              <p className="text-white/45 text-sm leading-relaxed mb-4">{f.desc}</p>
-              <div className="space-y-1.5">
-                {f.examples.map(ex => (
-                  <div key={ex} className="flex items-center gap-2">
-                    <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: f.color }} />
-                    <span className="text-xs text-white/40">{ex}</span>
-                  </div>
+              <h3 className="font-bold text-gray-900 text-lg mb-2">{f.title}</h3>
+              <p className="text-gray-500 text-sm leading-relaxed mb-5">{f.desc}</p>
+              <div className="flex flex-wrap gap-2">
+                {f.tags.map(t => (
+                  <span key={t} className="text-xs font-semibold px-3 py-1.5 rounded-xl"
+                    style={{ background: f.lightBg, color: f.color }}>{t}</span>
                 ))}
               </div>
             </div>
@@ -357,59 +340,126 @@ function Features() {
   );
 }
 
-/* ─── HOW IT WORKS ─── */
-function HowItWorks() {
-  const steps = [
-    {
-      n: '01', title: 'Install Ollama', color: '#3b82f6',
-      desc: 'Download Ollama from ollama.com. Pull any model — llama3.2, mistral, qwen2.5-coder. Works with 1 model, optimizes with more.',
-      code: 'ollama serve\nollama pull llama3.2\nollama pull nomic-embed-text',
-    },
-    {
-      n: '02', title: 'Open Vault AI', color: '#7c3aed',
-      desc: 'Launch the app. It detects your models automatically and routes each task to the right one. No configuration required.',
-      code: 'cd VaultAI && npm install\nnpm run dev\n# → http://localhost:5173',
-    },
-    {
-      n: '03', title: 'Talk to Your Files', color: '#06b6d4',
-      desc: 'Type natural language instructions. Manage files, search across documents, generate content — all processed locally by your models.',
-      code: '"Move all PDFs to Archive/"\n"Summarize contract.pdf"\n"Extract all dates to CSV"',
-    },
+/* ── PROBLEM / COMPARISON ── */
+function Problem() {
+  const rows = [
+    { label: 'Your data goes to the cloud', before: true, after: false },
+    { label: 'Monthly API subscription cost', before: true, after: false },
+    { label: 'One AI model for everything', before: true, after: false },
+    { label: 'Read-only AI assistants', before: true, after: false },
+    { label: 'Privacy policies you can\'t audit', before: true, after: false },
+    { label: '100% local processing', before: false, after: true },
+    { label: 'Natural language file operations', before: false, after: true },
+    { label: 'Auto-routing to best model per task', before: false, after: true },
+    { label: 'Document generation & transformation', before: false, after: true },
+    { label: 'Open, auditable architecture', before: false, after: true },
   ];
 
   return (
-    <section className="py-28">
+    <section className="py-24 bg-white">
       <div className="max-w-5xl mx-auto px-6">
-        <div className="text-center mb-16 reveal">
-          <div className="text-cyan-400 text-sm font-semibold uppercase tracking-widest mb-4">Setup</div>
-          <h2 className="font-black text-white text-4xl md:text-5xl tracking-tight mb-4">
-            Up and running in <span className="text-gradient">under 2 minutes.</span>
+        <div className="text-center mb-14 reveal">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-5"
+            style={{ background: '#fce7f3', color: '#ec4899' }}>
+            <ZapIcon size={13} /> The Problem
+          </div>
+          <h2 className="font-black text-gray-900 tracking-tight mb-4"
+            style={{ fontSize: 'clamp(32px, 5vw, 52px)' }}>
+            Cloud AI asks for the one thing<br />
+            <span className="text-gradient-pink">you can't give it.</span>
+          </h2>
+          <p className="text-gray-500 text-lg max-w-xl mx-auto">
+            Attorneys, doctors, and compliance teams can't upload sensitive files to the cloud. Vault AI was purpose-built for them.
+          </p>
+        </div>
+
+        <div className="reveal grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Header */}
+          <div className="hidden md:block" />
+          <div className="rounded-2xl p-4 text-center bg-red-50 border-2 border-red-100">
+            <div className="text-2xl mb-1">😰</div>
+            <div className="font-bold text-red-600 text-sm">Cloud AI</div>
+          </div>
+          <div className="rounded-2xl p-4 text-center border-2"
+            style={{ background: 'linear-gradient(135deg, #dbeafe, #ede9fe)', borderColor: '#a5b4fc' }}>
+            <div className="text-2xl mb-1">🔒</div>
+            <div className="font-bold text-blue-700 text-sm">Vault AI</div>
+          </div>
+
+          {rows.map((r, i) => (
+            <React.Fragment key={i}>
+              <div className={`flex items-center px-4 py-3 rounded-xl ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
+                <span className="text-sm text-gray-700 font-medium">{r.label}</span>
+              </div>
+              <div className={`flex items-center justify-center py-3 rounded-xl ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
+                {r.before
+                  ? <span className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-red-500 text-xs font-bold">✗</span>
+                  : <span className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-300 text-xs font-bold">—</span>}
+              </div>
+              <div className={`flex items-center justify-center py-3 rounded-xl ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
+                {r.after
+                  ? <span className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xs font-bold">✓</span>
+                  : <span className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-300 text-xs font-bold">—</span>}
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── HOW IT WORKS ── */
+function HowItWorks() {
+  const steps = [
+    {
+      n: '1', color: '#2563eb', bg: '#dbeafe',
+      title: 'Install Ollama',
+      desc: 'Download Ollama and pull any model. Works with 1 model, smarter with more. No GPU required — 8GB RAM is enough.',
+      code: 'ollama pull llama3.2\nollama pull nomic-embed-text',
+    },
+    {
+      n: '2', color: '#7c3aed', bg: '#ede9fe',
+      title: 'Open Vault AI',
+      desc: 'Launch the app. It auto-detects your models, sets up routing, and is ready for work in under 30 seconds.',
+      code: 'npm install && npm run dev\n# → localhost:5173 ✓',
+    },
+    {
+      n: '3', color: '#ec4899', bg: '#fce7f3',
+      title: 'Talk to Your Files',
+      desc: 'Type any instruction in plain English. Move files, search documents, generate content — all runs locally on your machine.',
+      code: '"Summarize all contracts in /Legal"\n"Extract dates to CSV" ✓',
+    },
+  ];
+  return (
+    <section className="py-24" style={{ background: 'linear-gradient(180deg, #f8faff 0%, #fff 100%)' }}>
+      <div className="max-w-5xl mx-auto px-6">
+        <div className="text-center mb-14 reveal">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-5"
+            style={{ background: '#d1fae5', color: '#059669' }}>
+            <ZapIcon size={13} /> Quick Start
+          </div>
+          <h2 className="font-black text-gray-900 tracking-tight mb-4"
+            style={{ fontSize: 'clamp(32px, 5vw, 52px)' }}>
+            Up and running in<br />
+            <span className="text-gradient-green">under 2 minutes.</span>
           </h2>
         </div>
 
-        <div className="space-y-8">
-          {steps.map((step, i) => (
-            <div key={step.n} className="reveal relative pl-12 timeline-item" style={{ transitionDelay: `${i * 120}ms` }}>
-              <div className="absolute left-0 top-0 w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black"
-                style={{ background: `${step.color}18`, border: `1px solid ${step.color}30`, color: step.color }}>
-                {step.n}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {steps.map((s, i) => (
+            <div key={i} className="card-hover reveal rounded-3xl border border-gray-100 bg-white shadow-sm overflow-hidden"
+              style={{ transitionDelay: `${i * 100}ms` }}>
+              <div className="p-2" style={{ background: s.bg }}>
+                <div className="rounded-2xl bg-white p-4">
+                  <pre className="text-xs font-mono leading-relaxed" style={{ color: s.color }}>{s.code}</pre>
+                </div>
               </div>
-              <div className="glass rounded-2xl p-6 flex flex-col md:flex-row gap-6">
-                <div className="flex-1">
-                  <h3 className="font-bold text-white text-lg mb-2">{step.title}</h3>
-                  <p className="text-white/45 text-sm leading-relaxed">{step.desc}</p>
-                </div>
-                <div className="md:w-64 flex-shrink-0">
-                  <div className="rounded-xl overflow-hidden" style={{ background: '#0a0a12', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div className="flex items-center gap-1.5 px-3 py-2 border-b border-white/5">
-                      <div className="w-2 h-2 rounded-full" style={{ background: step.color, opacity: 0.7 }} />
-                      <span className="text-white/25 text-xs font-mono">terminal</span>
-                    </div>
-                    <pre className="px-4 py-3 text-xs font-mono leading-relaxed" style={{ color: step.color }}>
-                      {step.code}
-                    </pre>
-                  </div>
-                </div>
+              <div className="p-6">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xl mb-4"
+                  style={{ background: s.bg, color: s.color }}>{s.n}</div>
+                <h3 className="font-bold text-gray-900 text-lg mb-2">{s.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{s.desc}</p>
               </div>
             </div>
           ))}
@@ -419,66 +469,71 @@ function HowItWorks() {
   );
 }
 
-/* ─── CONNECTORS ─── */
+/* ── CONNECTORS ── */
 const CONNECTORS = [
-  { icon: FolderIcon, name: 'Obsidian', desc: 'Notes, tags & wikilinks', color: '#7c3aed' },
-  { icon: DatabaseIcon, name: 'SQLite', desc: 'Natural language → SQL', color: '#3b82f6' },
-  { icon: GitBranchIcon, name: 'Git', desc: 'Commits, diffs & history', color: '#f97316' },
-  { icon: MailIcon, name: 'Email', desc: '.mbox & .eml archives', color: '#ef4444' },
-  { icon: BookmarkIcon, name: 'Bookmarks', desc: 'Chrome, Firefox, Safari', color: '#eab308' },
-  { icon: ServerIcon, name: 'MCP Servers', desc: 'External tools via MCP', color: '#ec4899' },
+  { icon: FolderIcon, name: 'Obsidian', desc: 'Notes & wikilinks', color: '#7c3aed', bg: '#ede9fe' },
+  { icon: DatabaseIcon, name: 'SQLite', desc: 'Natural language SQL', color: '#2563eb', bg: '#dbeafe' },
+  { icon: GitBranchIcon, name: 'Git', desc: 'Commits & diffs', color: '#ea580c', bg: '#ffedd5' },
+  { icon: MailIcon, name: 'Email', desc: '.mbox & .eml files', color: '#dc2626', bg: '#fee2e2' },
+  { icon: BookmarkIcon, name: 'Bookmarks', desc: 'Chrome, Firefox, Safari', color: '#d97706', bg: '#fef3c7' },
+  { icon: ServerIcon, name: 'MCP Servers', desc: 'External tools via MCP', color: '#0891b2', bg: '#cffafe' },
 ];
 
 function Connectors() {
   return (
-    <section className="py-28 relative overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute bottom-0 left-1/4 w-96 h-64 rounded-full opacity-10"
-          style={{ background: 'radial-gradient(ellipse, #f59e0b, transparent)' }} />
-      </div>
-      <div className="max-w-5xl mx-auto px-6 relative">
+    <section className="py-24 bg-white">
+      <div className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-14 reveal">
-          <div className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-4">Connectors</div>
-          <h2 className="font-black text-white text-4xl md:text-5xl tracking-tight mb-4">
-            Your AI reads<br /><span className="text-gradient">all your data sources.</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-5"
+            style={{ background: '#ffedd5', color: '#ea580c' }}>
+            <PlugIcon size={13} /> Local Connectors
+          </div>
+          <h2 className="font-black text-gray-900 tracking-tight mb-4"
+            style={{ fontSize: 'clamp(32px, 5vw, 52px)' }}>
+            Your AI reads<br />
+            <span className="text-gradient-blue">all your data sources.</span>
           </h2>
-          <p className="text-white/45 text-lg max-w-xl mx-auto">
-            Connect local data sources and Vault AI can query them directly in chat — no data leaves your machine.
+          <p className="text-gray-500 text-lg max-w-xl mx-auto">
+            Connect local data sources and query them directly in chat — no data ever leaves your machine.
           </p>
         </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 reveal">
-          {CONNECTORS.map(c => (
-            <div key={c.name} className="connector-badge glass rounded-2xl p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: `${c.color}18`, border: `1px solid ${c.color}25` }}>
-                <c.icon size={18} style={{ color: c.color }} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-10">
+          {CONNECTORS.map((c, i) => (
+            <div key={i} className="card-hover reveal rounded-2xl p-5 border border-gray-100 bg-white shadow-sm hover:shadow-lg transition-all duration-300 flex items-center gap-4"
+              style={{ transitionDelay: `${i * 70}ms` }}>
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                style={{ background: c.bg }}>
+                <c.icon size={22} style={{ color: c.color }} />
               </div>
               <div>
-                <p className="font-semibold text-white text-sm">{c.name}</p>
-                <p className="text-white/35 text-xs">{c.desc}</p>
+                <p className="font-bold text-gray-900 text-sm">{c.name}</p>
+                <p className="text-gray-400 text-xs">{c.desc}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* MCP detail */}
-        <div className="mt-10 glass rounded-2xl p-7 reveal"
-          style={{ background: 'linear-gradient(135deg, rgba(236,72,153,0.06) 0%, rgba(124,58,237,0.06) 100%)', borderColor: 'rgba(236,72,153,0.15)' }}>
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+        {/* MCP callout */}
+        <div className="reveal rounded-3xl p-8 border-2 overflow-hidden relative"
+          style={{ background: 'linear-gradient(135deg, #ede9fe 0%, #dbeafe 100%)', borderColor: '#c4b5fd' }}>
+          <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-20"
+            style={{ background: 'radial-gradient(circle, #7c3aed, transparent)' }} />
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6 relative">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <ServerIcon size={16} className="text-pink-400" />
-                <span className="text-pink-400 font-semibold text-sm">Model Context Protocol</span>
+              <div className="flex items-center gap-2 mb-3">
+                <ServerIcon size={18} className="text-purple-600" />
+                <span className="font-bold text-purple-700 text-sm uppercase tracking-wide">Model Context Protocol</span>
               </div>
-              <h3 className="font-bold text-white text-xl mb-2">Vault AI speaks MCP — both ways.</h3>
-              <p className="text-white/45 text-sm leading-relaxed">
-                Expose Vault AI tools to Claude Desktop, Cursor, or any MCP client. Or connect external MCP servers — Brave Search, GitHub, PostgreSQL — and use their tools directly in your chat.
+              <h3 className="font-black text-gray-900 text-2xl mb-2">Vault AI speaks MCP — both ways.</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Expose your entire Vault AI toolkit (13 tools) to Claude Desktop or Cursor. Or plug in external MCP servers for web search, GitHub access, and more.
               </p>
             </div>
-            <div className="md:w-72 flex-shrink-0 rounded-xl overflow-hidden" style={{ background: '#070710', border: '1px solid rgba(236,72,153,0.15)' }}>
-              <div className="px-3 py-2 border-b border-white/5 text-xs text-white/25 font-mono">claude_desktop_config.json</div>
-              <pre className="px-4 py-3 text-xs font-mono text-white/50 leading-relaxed">{`{
+            <div className="md:w-72 flex-shrink-0 rounded-2xl overflow-hidden bg-gray-900 shadow-xl">
+              <div className="px-4 py-2.5 border-b border-white/5">
+                <span className="text-gray-500 text-xs font-mono">claude_desktop_config.json</span>
+              </div>
+              <pre className="px-4 py-4 text-xs font-mono text-blue-300 leading-relaxed">{`{
   "mcpServers": {
     "vault-ai": {
       "url": "http://localhost:3002/sse"
@@ -493,59 +548,61 @@ function Connectors() {
   );
 }
 
-/* ─── PRIVACY ─── */
+/* ── PRIVACY ── */
 function Privacy() {
   const pillars = [
-    { icon: ShieldCheckIcon, color: '#10b981', title: 'Zero Data Egress', desc: 'By architecture, not policy. Every byte stays on your machine. Verifiable: no outbound connections except localhost.' },
-    { icon: CpuIcon, color: '#3b82f6', title: 'Local Model Execution', desc: 'Ollama runs models on your hardware. No API tokens, no usage tracking, no model provider seeing your data.' },
-    { icon: LockIcon, color: '#7c3aed', title: 'Open & Auditable', desc: 'No black boxes. The entire stack is inspectable. Every network call, every model invocation — visible and local.' },
-    { icon: FolderIcon, color: '#f59e0b', title: 'Safe File Ops', desc: 'Deleted files go to OS Trash — never permanent deletion. All destructive operations require explicit confirmation.' },
+    { icon: ShieldCheckIcon, color: '#059669', bg: '#d1fae5', title: 'Zero Data Egress', desc: 'By architecture, not policy. No HTTP calls outside localhost. Every byte stays on your device — verifiable and auditable.' },
+    { icon: CpuIcon, color: '#2563eb', bg: '#dbeafe', title: 'Local Model Execution', desc: 'Ollama runs models on your hardware. No API tokens, no usage tracking, no model provider ever seeing your queries.' },
+    { icon: LockIcon, color: '#7c3aed', bg: '#ede9fe', title: 'Open & Auditable', desc: 'No black boxes. Every network call, every model invocation is visible, local, and inspectable. Privacy by design.' },
+    { icon: FolderIcon, color: '#d97706', bg: '#fef3c7', title: 'Safe File Operations', desc: 'Deleted files go to OS Trash — never permanent deletion. All destructive operations require your explicit confirmation.' },
   ];
-
   return (
-    <section id="privacy" className="py-28 relative">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 right-0 w-96 h-96 -translate-y-1/2 opacity-10"
-          style={{ background: 'radial-gradient(circle, #10b981, transparent)' }} />
-      </div>
-      <div className="max-w-5xl mx-auto px-6 relative">
-        <div className="text-center mb-16 reveal">
-          <div className="text-green-400 text-sm font-semibold uppercase tracking-widest mb-4">Privacy</div>
-          <h2 className="font-black text-white text-4xl md:text-5xl tracking-tight mb-4">
-            Privacy isn't a feature.<br /><span className="text-gradient">It's the foundation.</span>
+    <section id="privacy" className="py-24" style={{ background: 'linear-gradient(180deg, #fff 0%, #f0fdf4 100%)' }}>
+      <div className="max-w-5xl mx-auto px-6">
+        <div className="text-center mb-14 reveal">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-5"
+            style={{ background: '#d1fae5', color: '#059669' }}>
+            <ShieldCheckIcon size={13} /> Privacy First
+          </div>
+          <h2 className="font-black text-gray-900 tracking-tight mb-4"
+            style={{ fontSize: 'clamp(32px, 5vw, 52px)' }}>
+            Privacy isn't a feature.<br />
+            <span className="text-gradient-green">It's the foundation.</span>
           </h2>
-          <p className="text-white/45 text-lg max-w-xl mx-auto">
+          <p className="text-gray-500 text-lg max-w-xl mx-auto">
             Built for attorneys, healthcare teams, compliance officers, and anyone whose files are too sensitive for the cloud.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
           {pillars.map((p, i) => (
-            <div key={p.title} className="feature-card glass rounded-2xl p-6 flex gap-4 reveal" style={{ transitionDelay: `${i * 80}ms` }}>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: `${p.color}15`, border: `1px solid ${p.color}25` }}>
-                <p.icon size={18} style={{ color: p.color }} />
+            <div key={i} className="card-hover reveal rounded-2xl p-6 border border-gray-100 bg-white shadow-sm hover:shadow-lg transition-all duration-300 flex gap-4"
+              style={{ transitionDelay: `${i * 80}ms` }}>
+              <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+                style={{ background: p.bg }}>
+                <p.icon size={20} style={{ color: p.color }} />
               </div>
               <div>
-                <h3 className="font-bold text-white text-sm mb-1">{p.title}</h3>
-                <p className="text-white/40 text-sm leading-relaxed">{p.desc}</p>
+                <h3 className="font-bold text-gray-900 mb-1">{p.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{p.desc}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Privacy status bar */}
-        <div className="reveal glass rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4"
-          style={{ background: 'rgba(16,185,129,0.05)', borderColor: 'rgba(16,185,129,0.15)' }}>
+        {/* Privacy status */}
+        <div className="reveal rounded-2xl p-5 border-2 flex flex-wrap items-center gap-4"
+          style={{ background: '#f0fdf4', borderColor: '#bbf7d0' }}>
           <div className="flex items-center gap-2.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse-slow" />
-            <span className="text-green-400 font-semibold text-sm">Privacy Status: All Clear</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="font-bold text-green-800 text-sm">Privacy Status: All Systems Local</span>
           </div>
-          <div className="flex flex-wrap gap-4 sm:ml-auto text-xs text-white/35">
-            <span className="flex items-center gap-1.5"><CheckIcon size={11} className="text-green-400" />Ollama: localhost:11434</span>
-            <span className="flex items-center gap-1.5"><CheckIcon size={11} className="text-green-400" />External requests: 0</span>
-            <span className="flex items-center gap-1.5"><CheckIcon size={11} className="text-green-400" />Telemetry: disabled</span>
-            <span className="flex items-center gap-1.5"><CheckIcon size={11} className="text-green-400" />File ops: logged locally</span>
+          <div className="flex flex-wrap gap-4 sm:ml-auto">
+            {['Ollama: localhost only', 'External requests: 0', 'Telemetry: off', 'Files logged locally'].map(t => (
+              <span key={t} className="flex items-center gap-1.5 text-xs text-green-700 font-medium">
+                <CheckIcon size={11} className="text-green-600" /> {t}
+              </span>
+            ))}
           </div>
         </div>
       </div>
@@ -553,59 +610,57 @@ function Privacy() {
   );
 }
 
-/* ─── PERSONAS ─── */
+/* ── PERSONAS ── */
 function Personas() {
   const personas = [
     {
-      emoji: '⚖️',
-      name: 'Clara',
-      role: 'Immigration Attorney',
+      emoji: '⚖️', name: 'Clara', role: 'Immigration Attorney',
+      color: '#2563eb', bg: '#dbeafe', ringColor: '#93c5fd',
       pain: 'Ethics rules ban cloud AI. Client files cannot leave her machine.',
-      gain: 'Full AI assistance on case files, contracts, and briefs — 100% local.',
-      color: '#3b82f6',
+      gain: 'Full AI assistance on case files, contracts, and briefs — 100% local. Finally usable.',
     },
     {
-      emoji: '🏥',
-      name: 'Marcus',
-      role: 'HealthTech VP Engineering',
+      emoji: '🏥', name: 'Marcus', role: 'HealthTech VP Engineering',
+      color: '#059669', bg: '#d1fae5', ringColor: '#6ee7b7',
       pain: 'PHI compliance blocks all SaaS AI. Team wastes hours on manual document work.',
-      gain: 'On-prem AI for his whole team — audit logs, RBAC, zero egress.',
-      color: '#10b981',
+      gain: 'On-prem AI with audit logs, RBAC, and zero egress. Compliance-safe from day one.',
     },
     {
-      emoji: '⚡',
-      name: 'Priya',
-      role: 'Indie Developer',
-      pain: 'Tired of wiring Ollama + LangChain + vector DB manually for every project.',
-      gain: 'Production-grade local AI platform with connectors, MCP, and agents built-in.',
-      color: '#7c3aed',
+      emoji: '⚡', name: 'Priya', role: 'Indie Developer',
+      color: '#7c3aed', bg: '#ede9fe', ringColor: '#c4b5fd',
+      pain: 'Tired of wiring Ollama + LangChain + vector DB manually for every side project.',
+      gain: 'Production-grade local AI platform with connectors, agents, and MCP built in.',
     },
   ];
-
   return (
-    <section className="py-28">
+    <section className="py-24 bg-white">
       <div className="max-w-5xl mx-auto px-6">
-        <div className="text-center mb-16 reveal">
-          <div className="text-blue-400 text-sm font-semibold uppercase tracking-widest mb-4">Who It's For</div>
-          <h2 className="font-black text-white text-4xl md:text-5xl tracking-tight">
-            Built for people who<br /><span className="text-gradient">can't afford to trust the cloud.</span>
+        <div className="text-center mb-14 reveal">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-5"
+            style={{ background: '#dbeafe', color: '#2563eb' }}>
+            <UsersIcon size={13} /> Who It's For
+          </div>
+          <h2 className="font-black text-gray-900 tracking-tight mb-4"
+            style={{ fontSize: 'clamp(32px, 5vw, 52px)' }}>
+            Built for people who<br />
+            <span className="text-gradient-blue">can't afford to trust the cloud.</span>
           </h2>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {personas.map((p, i) => (
-            <div key={p.name} className="feature-card glass rounded-2xl p-7 reveal" style={{ transitionDelay: `${i * 100}ms` }}>
-              <div className="text-3xl mb-4">{p.emoji}</div>
-              <div className="mb-4">
-                <p className="font-bold text-white text-base">{p.name}</p>
-                <p className="text-xs font-mono" style={{ color: p.color }}>{p.role}</p>
+            <div key={i} className="card-hover reveal rounded-3xl p-7 border-2 bg-white shadow-sm hover:shadow-xl transition-all duration-300"
+              style={{ borderColor: p.ringColor, transitionDelay: `${i * 100}ms` }}>
+              <div className="text-4xl mb-4">{p.emoji}</div>
+              <div className="mb-5">
+                <p className="font-black text-gray-900 text-xl">{p.name}</p>
+                <p className="text-sm font-semibold" style={{ color: p.color }}>{p.role}</p>
               </div>
-              <div className="space-y-4">
-                <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/10">
-                  <p className="text-xs text-white/35 leading-relaxed">❌ {p.pain}</p>
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-2xl bg-red-50 border border-red-100">
+                  <p className="text-xs text-red-600 leading-relaxed font-medium">❌ {p.pain}</p>
                 </div>
-                <div className="p-3 rounded-xl" style={{ background: `${p.color}08`, border: `1px solid ${p.color}18` }}>
-                  <p className="text-xs text-white/65 leading-relaxed">✓ {p.gain}</p>
+                <div className="p-3.5 rounded-2xl border" style={{ background: p.bg, borderColor: p.ringColor }}>
+                  <p className="text-xs leading-relaxed font-medium" style={{ color: p.color }}>✅ {p.gain}</p>
                 </div>
               </div>
             </div>
@@ -616,51 +671,55 @@ function Personas() {
   );
 }
 
-/* ─── ROADMAP ─── */
+/* ── ROADMAP ── */
 const ROADMAP = [
-  { version: 'v1.0', label: 'Core', color: '#10b981', status: 'live', items: ['Chat + file browser', 'Ollama multi-model routing', 'File ops + confirmation dialogs', 'PDF, DOCX, TXT, MD support'] },
-  { version: 'v1.5', label: 'Intelligence', color: '#3b82f6', status: 'live', items: ['Semantic search (local embeddings)', 'Document Q&A with citations', 'Multi-document synthesis', 'Auto-rename from content'] },
-  { version: 'v2.0', label: 'Generation', color: '#7c3aed', status: 'live', items: ['Document generation + streaming', 'Transform, translate, simplify', 'Structured data extraction → CSV', 'Generate panel (4 tabs)'] },
-  { version: 'v3.0', label: 'Connectors', color: '#f59e0b', status: 'live', items: ['Obsidian, SQLite, Git, Email', 'Browser bookmarks', 'Connector tools in chat', 'NL → SQL queries'] },
-  { version: 'v3.5', label: 'Multi-Agent', color: '#ec4899', status: 'live', items: ['Orchestrator + 5 specialist agents', 'Parallel + sequential execution', 'Simple / Multi-Agent toggle', 'Workflow progress panel'] },
-  { version: 'v4.0', label: 'MCP', color: '#06b6d4', status: 'live', items: ['Vault AI as MCP server', 'External MCP client', 'Claude Desktop integration', 'stdio + SSE transport'] },
-  { version: 'v4.5', label: 'Team', color: '#a855f7', status: 'next', items: ['Multi-user + RBAC', 'Audit logging', 'Admin console', 'Docker deployment'] },
-  { version: 'v5.0', label: 'Automation', color: '#f97316', status: 'future', items: ['Scheduled agents (cron)', 'Watch folders', 'Visual workflow builder', 'Email report generation'] },
+  { v: 'v1.0', label: 'Core', color: '#059669', bg: '#d1fae5', status: 'shipped', items: ['Chat + file browser', 'Multi-model Ollama routing', 'File ops + confirmations', 'PDF, DOCX, TXT, MD'] },
+  { v: 'v1.5', label: 'Intelligence', color: '#2563eb', bg: '#dbeafe', status: 'shipped', items: ['Semantic search (local)', 'Document Q&A + citations', 'Multi-doc synthesis', 'Auto-rename from content'] },
+  { v: 'v2.0', label: 'Generation', color: '#7c3aed', bg: '#ede9fe', status: 'shipped', items: ['Doc generation + streaming', 'Transform & translate', 'Extract to CSV/JSON', '4-tab Generate panel'] },
+  { v: 'v3.0', label: 'Connectors', color: '#ea580c', bg: '#ffedd5', status: 'shipped', items: ['Obsidian, SQLite, Git', 'Email + Bookmarks', 'NL → SQL queries', 'Connector tools in chat'] },
+  { v: 'v3.5', label: 'Multi-Agent', color: '#ec4899', bg: '#fce7f3', status: 'shipped', items: ['Orchestrator + 5 agents', 'Parallel execution', 'Workflow progress panel', 'Agent memory'] },
+  { v: 'v4.0', label: 'MCP', color: '#0891b2', bg: '#cffafe', status: 'shipped', items: ['13 tools exposed', 'Claude Desktop ready', 'SSE + stdio transport', 'External MCP client'] },
+  { v: 'v4.5', label: 'Team', color: '#d97706', bg: '#fef3c7', status: 'next', items: ['Multi-user + RBAC', 'Audit logging', 'Admin console', 'Docker deployment'] },
+  { v: 'v5.0+', label: 'Platform', color: '#6366f1', bg: '#e0e7ff', status: 'future', items: ['Scheduled agents', 'Watch folders', 'Plugin system', 'REST API'] },
 ];
 
 function Roadmap() {
   return (
-    <section id="roadmap" className="py-28 relative overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-full opacity-5"
-          style={{ background: 'linear-gradient(to bottom, transparent, #3b82f6, transparent)' }} />
-      </div>
-      <div className="max-w-5xl mx-auto px-6 relative">
-        <div className="text-center mb-16 reveal">
-          <div className="text-purple-400 text-sm font-semibold uppercase tracking-widest mb-4">Roadmap</div>
-          <h2 className="font-black text-white text-4xl md:text-5xl tracking-tight mb-4">
-            From MVP to platform.<br /><span className="text-gradient">The full vision.</span>
+    <section id="roadmap" className="py-24" style={{ background: 'linear-gradient(180deg, #f8faff 0%, #fff 100%)' }}>
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="text-center mb-14 reveal">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-5"
+            style={{ background: '#ede9fe', color: '#7c3aed' }}>
+            <TrendingUpIcon size={13} /> Roadmap
+          </div>
+          <h2 className="font-black text-gray-900 tracking-tight mb-4"
+            style={{ fontSize: 'clamp(32px, 5vw, 52px)' }}>
+            From MVP to platform.<br />
+            <span className="text-gradient-blue">The full vision.</span>
           </h2>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {ROADMAP.map((r, i) => (
-            <div key={r.version} className="feature-card glass rounded-2xl p-5 reveal" style={{ transitionDelay: `${i * 60}ms` }}>
+            <div key={i} className="card-hover reveal rounded-2xl p-5 border bg-white shadow-sm hover:shadow-lg transition-all duration-300"
+              style={{ borderColor: r.bg, transitionDelay: `${i * 60}ms` }}>
               <div className="flex items-center justify-between mb-3">
-                <span className="font-black text-sm font-mono" style={{ color: r.color }}>{r.version}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  r.status === 'live' ? 'bg-green-500/15 text-green-400' :
-                  r.status === 'next' ? 'bg-blue-500/15 text-blue-400' : 'bg-white/5 text-white/30'
-                }`}>
-                  {r.status === 'live' ? '✓ shipped' : r.status === 'next' ? 'next' : 'planned'}
+                <span className="font-black text-sm font-mono" style={{ color: r.color }}>{r.v}</span>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
+                  r.status === 'shipped' ? 'text-green-700' :
+                  r.status === 'next' ? 'text-blue-700' : 'text-gray-400'
+                }`}
+                  style={{
+                    background: r.status === 'shipped' ? '#d1fae5' : r.status === 'next' ? '#dbeafe' : '#f3f4f6'
+                  }}>
+                  {r.status === 'shipped' ? '✓ Live' : r.status === 'next' ? '→ Next' : '⋯ Planned'}
                 </span>
               </div>
-              <p className="font-bold text-white text-sm mb-3">{r.label}</p>
+              <p className="font-bold text-gray-900 text-sm mb-3">{r.label}</p>
               <div className="space-y-1.5">
-                {r.items.map(item => (
-                  <div key={item} className="flex items-start gap-2">
-                    <div className="w-1 h-1 rounded-full mt-1.5 flex-shrink-0" style={{ background: r.color }} />
-                    <span className="text-xs text-white/40 leading-relaxed">{item}</span>
+                {r.items.map(it => (
+                  <div key={it} className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: r.color }} />
+                    <span className="text-xs text-gray-500">{it}</span>
                   </div>
                 ))}
               </div>
@@ -672,141 +731,93 @@ function Roadmap() {
   );
 }
 
-/* ─── COMPETITIVE ─── */
-function Competitive() {
-  const cols = ['Product', 'File Ops', 'Gen AI', 'Multi-Agent', 'Connectors', 'MCP', '100% Local'];
-  const rows = [
-    { name: 'Vault AI', logo: '🔒', vals: [true, true, true, true, true, true], highlight: true },
-    { name: 'AnythingLLM', logo: '🦙', vals: [false, false, false, false, false, true] },
-    { name: 'Open WebUI', logo: '🌐', vals: [false, false, false, false, false, true] },
-    { name: 'LM Studio', logo: '🖥', vals: [false, false, false, false, false, true] },
-    { name: 'ChatGPT', logo: '🤖', vals: [false, true, false, false, false, false] },
-  ];
-
-  return (
-    <section className="py-28">
-      <div className="max-w-5xl mx-auto px-6">
-        <div className="text-center mb-14 reveal">
-          <div className="text-blue-400 text-sm font-semibold uppercase tracking-widest mb-4">Positioning</div>
-          <h2 className="font-black text-white text-4xl md:text-5xl tracking-tight">
-            The only product that<br /><span className="text-gradient">does all of this locally.</span>
-          </h2>
-        </div>
-
-        <div className="reveal overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/5">
-                {cols.map((c, i) => (
-                  <th key={c} className={`text-left pb-4 ${i === 0 ? 'pr-6 text-white/50 text-sm font-medium' : 'px-4 text-center text-xs text-white/35 font-medium uppercase tracking-wider'}`}>{c}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(row => (
-                <tr key={row.name} className={`border-b border-white/[0.03] ${row.highlight ? 'rounded-xl' : ''}`}>
-                  <td className="py-4 pr-6">
-                    <div className={`flex items-center gap-3 ${row.highlight ? 'rounded-xl px-3 py-2 -mx-3' : ''}`}
-                      style={row.highlight ? { background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.12)' } : {}}>
-                      <span className="text-lg">{row.logo}</span>
-                      <span className={`font-semibold text-sm ${row.highlight ? 'text-white' : 'text-white/40'}`}>{row.name}</span>
-                      {row.highlight && <span className="ml-auto text-xs text-blue-400 font-mono">← you are here</span>}
-                    </div>
-                  </td>
-                  {row.vals.map((v, i) => (
-                    <td key={i} className="px-4 py-4 text-center">
-                      {v ? (
-                        <span className={`text-base ${row.highlight ? 'text-blue-400' : 'text-green-500/50'}`}>✓</span>
-                      ) : (
-                        <span className="text-white/15 text-base">—</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── CTA ─── */
+/* ── CTA ── */
 function CTA() {
   return (
-    <section className="py-28 relative overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(59,130,246,0.1) 0%, rgba(124,58,237,0.06) 50%, transparent 100%)' }} />
-      </div>
+    <section className="py-24 relative overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #1e3a8a 50%, #0c4a6e 100%)' }}>
+      {/* Decorative blobs */}
+      <div className="absolute top-0 left-1/4 w-64 h-64 rounded-full opacity-20"
+        style={{ background: 'radial-gradient(circle, #7c3aed, transparent)' }} />
+      <div className="absolute bottom-0 right-1/4 w-80 h-80 rounded-full opacity-15"
+        style={{ background: 'radial-gradient(circle, #ec4899, transparent)' }} />
+
       <div className="max-w-3xl mx-auto px-6 text-center relative">
-        <div className="text-6xl mb-8">🔒</div>
-        <h2 className="font-black text-white leading-tight mb-6" style={{ fontSize: 'clamp(36px, 6vw, 64px)' }}>
-          Your files deserve<br /><span className="text-gradient">an AI that keeps secrets.</span>
+        <div className="text-6xl mb-6 animate-float">🔒</div>
+        <h2 className="font-black text-white leading-tight mb-5"
+          style={{ fontSize: 'clamp(36px, 6vw, 64px)' }}>
+          Your files deserve an AI<br />
+          <span style={{ background: 'linear-gradient(90deg, #60a5fa, #a78bfa, #f0abfc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+            that keeps secrets.
+          </span>
         </h2>
-        <p className="text-white/45 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
-          No cloud. No subscriptions. No data leaving your machine. Start using Vault AI in under 2 minutes.
+        <p className="text-blue-200 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
+          No cloud. No subscriptions. No data leaving your machine. Built for professionals who handle sensitive documents every day.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer"
-            className="btn-primary text-white font-bold px-10 py-4 rounded-2xl text-base flex items-center gap-3 glow-blue">
-            <SparklesIcon size={18} />
-            Launch Vault AI
-            <ArrowRightIcon size={16} />
+            className="bg-white text-blue-900 font-black px-10 py-4 rounded-2xl text-lg flex items-center gap-3 hover:bg-blue-50 transition-all duration-200 shadow-2xl hover:shadow-white/20 hover:-translate-y-1">
+            <SparklesIcon size={20} className="text-blue-600" />
+            Launch Vault AI Free
+            <ArrowRightIcon size={18} />
           </a>
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer"
-            className="glass text-white/60 hover:text-white font-semibold px-8 py-4 rounded-2xl text-base flex items-center gap-2 transition-all duration-200">
+          <a href="#features"
+            className="text-white/70 hover:text-white font-semibold px-8 py-4 rounded-2xl text-base flex items-center gap-2 border-2 border-white/20 hover:border-white/40 transition-all duration-200">
             <CodeIcon size={16} />
-            View on GitHub
+            See All Features
           </a>
+        </div>
+
+        {/* Trust badges */}
+        <div className="flex flex-wrap items-center justify-center gap-6 mt-12 text-sm text-blue-200/70">
+          {['🔒 100% Local', '⚡ Instant Setup', '🛡️ Zero Telemetry', '🌐 Works Offline', '✅ Open Architecture'].map(b => (
+            <span key={b} className="font-medium">{b}</span>
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-/* ─── FOOTER ─── */
+/* ── FOOTER ── */
 function Footer() {
   return (
-    <footer className="border-t border-white/[0.04] py-12">
-      <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+    <footer className="bg-white border-t border-gray-100 py-10">
+      <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <LockIcon size={14} className="text-white" />
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
+            <LockIcon size={15} className="text-white" />
           </div>
-          <span className="font-bold text-white/60 text-sm">Vault AI</span>
-          <span className="text-white/20 text-sm">·</span>
-          <span className="text-white/25 text-xs">Your Files. Your AI. Your Privacy.</span>
+          <span className="font-black text-gray-900">Vault AI</span>
+          <span className="text-gray-300 mx-1">·</span>
+          <span className="text-gray-400 text-sm">Your Files. Your AI. Your Privacy.</span>
         </div>
-        <div className="flex items-center gap-6 text-xs text-white/25">
-          <span className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
-            100% Local
-          </span>
-          <span>Zero data egress</span>
-          <span>Open architecture</span>
-          <span>© 2026 Vault AI</span>
+        <div className="flex flex-wrap items-center gap-5 text-xs text-gray-400">
+          {['100% Local', 'Zero data egress', 'Open architecture', '© 2026 Vault AI'].map(t => (
+            <span key={t}>{t}</span>
+          ))}
         </div>
       </div>
     </footer>
   );
 }
 
-/* ─── ROOT ─── */
+/* ── ROOT ── */
 export default function App() {
   useReveal();
   return (
-    <div className="min-h-screen bg-vault-black">
+    <div className="min-h-screen bg-white">
       <Nav />
       <Hero />
+      <Ticker />
       <Stats />
-      <Problem />
       <Features />
+      <Problem />
       <HowItWorks />
       <Connectors />
       <Privacy />
       <Personas />
-      <Competitive />
       <Roadmap />
       <CTA />
       <Footer />
