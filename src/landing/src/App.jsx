@@ -359,7 +359,7 @@ const FEATURES = [
     icon: MessageSquareIcon, color: '#2563eb', bg: '#dbeafe', lightBg: '#eff6ff',
     title: 'Natural Language File Ops',
     desc: 'Move, copy, rename, delete, and organize files just by typing. "Move all invoices to Finance and rename by date" — done in seconds.',
-    tags: ['Move · Copy · Rename', 'Bulk operations', 'Smart confirmation'],
+    tags: ['Move · Copy · Rename', 'Bulk operations', 'Smart confirmation', '🎤 Voice input'],
   },
   {
     icon: SearchIcon, color: '#7c3aed', bg: '#ede9fe', lightBg: '#f5f3ff',
@@ -799,7 +799,7 @@ function ComingNext() {
       labelBg: '#cffafe',
       title: 'Mobile Companion',
       desc: 'Access your Vault AI from your phone over local WiFi. Chat, search, and trigger file ops from anywhere in your home or office.',
-      pills: ['iOS & Android', 'Local WiFi', 'Voice input', 'Quick actions'],
+      pills: ['iOS & Android', 'Local WiFi', 'Quick actions'],
       color: '#0891b2',
       border: '#a5f3fc',
     },
