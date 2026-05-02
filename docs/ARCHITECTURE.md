@@ -3,9 +3,9 @@
 > Privacy-first, local AI-powered document intelligence platform.
 > All AI runs via Ollama. No cloud. No telemetry. No data leaves the machine.
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Date:** May 2026  
-**Status:** Architecture Review — RAG Patterns & Agent Design Added
+**Status:** Architecture Review — RAG Patterns, Agent Design & Multi-Agent Orchestration Added
 
 ---
 
@@ -18,6 +18,7 @@
 5. [Backend Architecture](#5-backend-architecture)
 6. [AI Layer — Ollama Integration](#6-ai-layer--ollama-integration)
 7. [Document Intelligent Agent Architecture](#7-document-intelligent-agent-architecture)
+7B. [Multi-Agent Orchestration Architecture](#7b-multi-agent-orchestration-architecture)
 8. [Data Storage Architecture](#8-data-storage-architecture)
 9. [Web Search & Deep Research Architecture](#9-web-search--deep-research-architecture)
 10. [Security & Privacy Model](#10-security--privacy-model)
@@ -679,6 +680,234 @@ Drawing from how Codex Agent and Claude define tools:
 4. **Tool results as structured JSON** — not prose. The model re-reads the result; structured data is easier for it to reason about than "Files found: file1.pdf, file2.pdf..."
 
 5. **Error messages are model-readable** — `{ "error": "Path not found: /Users/alex/Documents/report.pdf", "suggestion": "Did you mean /Users/alex/Documents/Report.pdf?" }` — the model can recover from this; an unstructured error string makes it harder.
+
+---
+
+## 7B. Multi-Agent Orchestration Architecture
+
+Multi-Agent Orchestration is what separates Vault AI from a simple chatbot. When the user enables **Orchestrated mode**, complex requests are decomposed into atomic sub-tasks and routed to specialized agents — potentially in parallel.
+
+### System Design
+
+```
+User Request (Orchestrated Mode)
+           │
+           ▼
+   ┌─────────────────┐
+   │  ORCHESTRATOR   │  Plans the task, builds a dependency graph,
+   │                 │  assigns sub-tasks to agents
+   └────────┬────────┘
+            │
+     ┌──────┴──────────────────────────────────┐
+     │              TASK GRAPH                  │
+     │                                         │
+     │  [Task A] ──────────────► [Task C]      │
+     │      │                      ▲           │
+     │  [Task B] ──────────────────┘           │
+     │  (parallel)              (sequential)    │
+     └─────────────────────────────────────────┘
+            │
+     ┌──────┴───────────────────────────────────────┐
+     │           SPECIALIZED SUB-AGENTS              │
+     │                                              │
+     │  📄 Document Agent   🔍 Research Agent       │
+     │  ✍️  Writer Agent     📁 File Agent           │
+     │  🔗 Synthesis Agent  🏷️  Classifier Agent    │
+     └──────────────────────────────────────────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │  RESULT MERGER  │  Combines outputs, resolves conflicts,
+   │                 │  builds final response with source attribution
+   └─────────────────┘
+            │
+            ▼
+       User Response (with cross-agent citations)
+```
+
+---
+
+### Orchestrator Design
+
+The Orchestrator is itself an Ollama model call with a specialized system prompt that outputs a structured task plan:
+
+```json
+{
+  "tasks": [
+    {
+      "id": "t1",
+      "agent": "document",
+      "action": "summarize",
+      "input": { "documentId": "contract-2024.pdf" },
+      "dependsOn": []
+    },
+    {
+      "id": "t2",
+      "agent": "research",
+      "action": "search",
+      "input": { "query": "GDPR contract requirements 2024" },
+      "dependsOn": []
+    },
+    {
+      "id": "t3",
+      "agent": "writer",
+      "action": "synthesize",
+      "input": { "sources": ["t1", "t2"] },
+      "dependsOn": ["t1", "t2"]
+    }
+  ]
+}
+```
+
+Tasks with no `dependsOn` run in parallel. Tasks with `dependsOn` wait for their dependencies before starting. The Runner executes this graph using a topological sort.
+
+---
+
+### Agent Registry
+
+Each agent is registered with a fixed interface:
+
+```javascript
+// agents/registry.js
+const AGENT_REGISTRY = {
+  document: {
+    name: "Document Agent",
+    description: "Parse, embed, query, extract, classify, and summarize documents",
+    actions: ["ingest", "query", "summarize", "extract", "classify", "compare", "audit"],
+    handler: require('./documentAgent'),
+  },
+  research: {
+    name: "Research Agent",
+    description: "Web search and deep research with source fetching and synthesis",
+    actions: ["search", "deep_research", "fetch_page", "summarize_source"],
+    handler: require('./researchAgent'),
+  },
+  writer: {
+    name: "Writer Agent",
+    description: "Draft, transform, rewrite, translate, and format documents",
+    actions: ["draft", "transform", "rewrite", "translate", "convert_format"],
+    handler: require('./writerAgent'),
+  },
+  file: {
+    name: "File Agent",
+    description: "File system navigation and operations",
+    actions: ["list", "read", "move", "rename", "find", "batch_rename", "organize"],
+    handler: require('./fileAgent'),
+  },
+  synthesis: {
+    name: "Synthesis Agent",
+    description: "Combine and reconcile outputs from multiple agents",
+    actions: ["merge", "reconcile", "deduplicate", "rank"],
+    handler: require('./synthesisAgent'),
+  },
+  classifier: {
+    name: "Classifier Agent",
+    description: "Auto-classify and tag documents or files in batch",
+    actions: ["classify", "tag", "cluster", "label"],
+    handler: require('./classifierAgent'),
+  },
+};
+```
+
+---
+
+### Agent Communication Protocol
+
+Agents communicate via a **shared working context** — a typed in-memory scratchpad scoped to the current session turn:
+
+```javascript
+// Shared context passed to every agent in the session
+const workingContext = {
+  sessionId: "sess_abc123",
+  turnId: "turn_7",
+  results: {
+    "t1": { agent: "document", status: "complete", output: { summary: "..." } },
+    "t2": { agent: "research", status: "running", output: null },
+  },
+  userPreferences: { language: "en", tone: "professional" },
+  documents: ["contract-2024.pdf"],   // in-scope documents for this turn
+};
+```
+
+Agents read from `workingContext.results` to get upstream outputs and write their own output back into it. The Runner is responsible for injecting the right `dependsOn` results into each agent's input before calling it.
+
+---
+
+### Runner Execution Model
+
+```javascript
+// agents/runner.js — simplified execution model
+
+async function runTaskGraph(taskGraph, workingContext) {
+  const pending = new Set(taskGraph.tasks.map(t => t.id));
+  const running = new Map();
+  const completed = new Set();
+
+  while (pending.size > 0 || running.size > 0) {
+    // Start all tasks whose dependencies are complete
+    for (const task of taskGraph.tasks) {
+      if (!pending.has(task.id)) continue;
+      if (task.dependsOn.every(dep => completed.has(dep))) {
+        pending.delete(task.id);
+        const promise = executeAgent(task, workingContext)
+          .then(result => {
+            workingContext.results[task.id] = result;
+            completed.add(task.id);
+            running.delete(task.id);
+          });
+        running.set(task.id, promise);
+      }
+    }
+    // Wait for at least one running task to complete
+    if (running.size > 0) await Promise.race(running.values());
+  }
+}
+```
+
+This gives true parallelism for independent tasks while respecting sequential dependencies.
+
+---
+
+### Agent State Machine (per task)
+
+```
+QUEUED
+  │
+  ▼ [dependencies met]
+RUNNING
+  │         │
+  ▼         ▼
+COMPLETE   FAILED
+  │              │
+  ▼              ▼
+feeds next   retry or
+agent(s)     surface error
+```
+
+Agents broadcast their state transitions to the frontend via SSE — the Live Agent Dashboard reflects these in real-time.
+
+---
+
+### Multi-Agent API Endpoints
+
+```
+POST   /api/agents/orchestrate      Submit a request for orchestration (returns SSE stream)
+GET    /api/agents/registry         List all available agents and their actions
+GET    /api/agents/session/:id      Get full task graph + results for a session turn
+POST   /api/agents/retry/:taskId    Retry a specific failed or overridden task
+DELETE /api/agents/session/:id      Cancel all running tasks for a session turn
+```
+
+---
+
+### When to Use Single vs. Multi-Agent
+
+| Mode | Use for | Speed | Quality |
+|------|---------|-------|---------|
+| **Simple** | Single-step questions, quick file ops, casual chat | Fast (1 model call) | Good |
+| **Orchestrated** | Multi-step research, cross-document analysis, complex batch ops | Slower (N model calls) | Higher |
+
+**Auto-detection rule (future):** If the user's message contains more than one distinct action verb targeting different data sources, suggest Orchestrated mode. If the message is a direct question or a single file operation, default to Simple.
 
 ---
 

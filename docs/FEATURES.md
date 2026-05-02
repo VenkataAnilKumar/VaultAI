@@ -3,9 +3,9 @@
 > Privacy-first, local AI-powered file and document management platform.
 > All AI runs via Ollama — no cloud, no subscriptions, no data leaving your machine.
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Date:** May 2026  
-**Total Features:** 99  
+**Total Features:** 121  
 
 ---
 
@@ -20,7 +20,8 @@
 7. [Connectors](#module-7-connectors)
 8. [Generate](#module-8-generate)
 9. [App Experience](#module-9-app-experience)
-10. [Roadmap & Phases](#roadmap--phases)
+10. [Multi-Agent Orchestration](#module-10-multi-agent-orchestration)
+11. [Roadmap & Phases](#roadmap--phases)
 
 ---
 
@@ -36,7 +37,7 @@
 | 1.4 | Image Attachment | Attach images to chat, analyzed by local vision model (llava) | P1 |
 | 1.5 | Session History | All chats saved locally, grouped by Today / Yesterday / Older | P0 |
 | 1.6 | Session Restore | Click any past session to restore the full conversation | P0 |
-| 1.7 | Workflow Mode | Toggle between Simple (single agent) and Multi-Agent orchestration | P1 |
+| 1.7 | Workflow Mode | Switch between Simple (single model, fast) and Orchestrated (multi-agent, thorough). In Orchestrated mode the Orchestrator decomposes the task and routes to specialized sub-agents. See Module 10. | P1 |
 | 1.8 | Tool Use | AI can read, write, move, delete files using built-in tools | P0 |
 | 1.9 | Confirmation Dialog | Destructive actions (delete, bulk move) require user approval | P0 |
 | 1.10 | Suggestion Chips | Quick-start prompts shown when chat is empty | P1 |
@@ -273,6 +274,69 @@
 
 ---
 
+---
+
+## Module 10: Multi-Agent Orchestration
+
+> Complex tasks decomposed and routed to specialized sub-agents running in parallel. The Orchestrator plans, agents execute, the Synthesis Agent assembles the final answer.
+
+### 10A — Orchestrator
+
+| ID | Feature | Description | Priority |
+|----|---------|-------------|----------|
+| 10.1 | Multi-Agent Mode Toggle | Switch between Simple (single model, fast) and Orchestrated (multi-agent, thorough) per session | P1 |
+| 10.2 | Task Decomposition | Orchestrator analyzes the request and generates a structured task graph with atomic sub-tasks and dependencies | P1 |
+| 10.3 | Task Plan Preview | Before execution, user sees the decomposed plan and can edit, reorder, or remove steps | P2 |
+| 10.4 | Parallel Execution | Independent sub-tasks run simultaneously (e.g. summarize 3 documents in parallel while searching the web) | P1 |
+| 10.5 | Sequential Handoff | Output of one agent becomes the typed input to the next agent in the dependency chain | P1 |
+| 10.6 | Live Agent Dashboard | Real-time panel showing each agent's name, current task, elapsed time, and status (queued / running / done / failed) | P1 |
+
+---
+
+### 10B — Specialized Sub-Agents
+
+| ID | Feature | Description | Priority |
+|----|---------|-------------|----------|
+| 10.7 | Document Agent | Handles all document operations: ingest, parse, embed, Q&A (RAG), extract, classify, summarize, compare, audit | P0 |
+| 10.8 | Research Agent | Full deep research pipeline: DuckDuckGo search, page fetching, per-source summarization, synthesis | P0 |
+| 10.9 | Writer Agent | Drafting, transformation, tone rewriting, translation, format conversion (bullets → report, notes → minutes) | P1 |
+| 10.10 | File Agent | File system operations: navigate, read, batch rename, organize, find duplicates, move, suggest structure | P1 |
+| 10.11 | Synthesis Agent | Merges and reconciles outputs from multiple agents into a single coherent result with source attribution | P1 |
+| 10.12 | Classifier Agent | Auto-classifies and tags a batch of documents or files; groups by topic, type, or sensitivity | P1 |
+
+---
+
+### 10C — Agent Control
+
+| ID | Feature | Description | Priority |
+|----|---------|-------------|----------|
+| 10.13 | Stop / Interrupt | Halt any running agent mid-task; choose to keep partial results or discard | P1 |
+| 10.14 | Result Review | Inspect and edit any agent's output before it flows downstream to the next agent | P2 |
+| 10.15 | Agent Retry | Re-run a specific failed or unsatisfactory agent step with an adjusted prompt or parameters | P2 |
+| 10.16 | Agent Override | Manually replace an agent's output with your own text and continue the pipeline from that point | P2 |
+
+---
+
+### 10D — Agent Memory & Attribution
+
+| ID | Feature | Description | Priority |
+|----|---------|-------------|----------|
+| 10.17 | Shared Working Context | All agents in a session share a scratchpad of intermediate results; downstream agents read upstream outputs | P1 |
+| 10.18 | Cross-Agent Citations | Final synthesized answer traces exactly which agent contributed which part | P2 |
+| 10.19 | Session-Level Memory | Agents retain user preferences (tone, language, output format) across turns in a session | P2 |
+
+---
+
+### 10E — Custom Agents
+
+| ID | Feature | Description | Priority |
+|----|---------|-------------|----------|
+| 10.20 | Agent Registry | View all available agents, their supported actions, and current status | P2 |
+| 10.21 | Custom Agent Builder | Define a new agent with a name, icon, system prompt, allowed tools, and trigger conditions | P3 |
+| 10.22 | Agent Chaining | Save a multi-agent pipeline as a named workflow and re-run it on demand | P3 |
+
+---
+
 ## Feature Summary
 
 | Module | Feature Count | P0 | P1 | P2 | P3 |
@@ -286,7 +350,8 @@
 | Connectors | 6 | 0 | 4 | 2 | 0 |
 | Generate | 4 | 2 | 2 | 0 | 0 |
 | App Experience | 10 | 6 | 1 | 3 | 0 |
-| **Total** | **99** | **35** | **37** | **26** | **1** |
+| Multi-Agent Orchestration | 22 | 2 | 11 | 7 | 2 |
+| **Total** | **121** | **37** | **48** | **33** | **3** |
 
 > **Priority Key:** P0 = Must have (MVP) · P1 = Should have · P2 = Nice to have · P3 = Future
 
@@ -308,7 +373,7 @@
 - Codex UI with dark mode, keyboard shortcuts, settings
 
 ### Phase 2 — Intelligence Layer
-*Goal: Make the Document Agent genuinely powerful*
+*Goal: Make the Document Agent genuinely powerful and introduce basic multi-agent orchestration*
 
 - Multi-document Q&A
 - **HyDE retrieval upgrade** — replaces naive RAG with hypothetical document embeddings for 30–50% better accuracy
@@ -320,18 +385,27 @@
 - Audit reports
 - Full library indexing and cross-document Q&A
 - Onboarding wizard
+- **Multi-Agent Mode toggle** (10.1) — Simple vs. Orchestrated
+- **Task Decomposition + Parallel Execution** (10.2, 10.4) — Orchestrator plans, parallel tasks run
+- **Document Agent + Research Agent** as registered sub-agents (10.7, 10.8)
+- **Shared Working Context** (10.17) — agents share intermediate results
 
 ### Phase 3 — Research & Web
-*Goal: Connect Vault AI to the outside world, privacy-first*
+*Goal: Connect Vault AI to the outside world and mature the agent system*
 
 - Web Search (DuckDuckGo)
 - Image Search
 - Image Analysis in Chat (vision model)
 - Deep Research agent with live progress + report export
 - Search-to-Chat
+- **Live Agent Dashboard** (10.6) — real-time status panel per agent
+- **Stop / Interrupt** (10.13) — halt any running agent
+- **Sequential Handoff** (10.5) — typed outputs between agents
+- **Writer Agent + File Agent** (10.9, 10.10) as registered sub-agents
+- **Synthesis Agent + Classifier Agent** (10.11, 10.12)
 
 ### Phase 4 — Automation & Power Features
-*Goal: Run Vault AI as a background intelligence layer*
+*Goal: Run Vault AI as a background intelligence layer with full agent control*
 
 - Folder Watcher with auto-classify and auto-summarize
 - Smart Alerts
@@ -340,6 +414,9 @@
 - Multi-Model Routing Config
 - Knowledge Graph View
 - Incremental Indexing
+- **Task Plan Preview + Result Review + Agent Retry + Override** (10.3, 10.14, 10.15, 10.16)
+- **Cross-Agent Citations + Session-Level Memory** (10.18, 10.19)
+- **Agent Registry UI** (10.20)
 
 ### Phase 5 — Distribution
 *Goal: Make Vault AI feel like a native product*

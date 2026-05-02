@@ -25,12 +25,12 @@ const LAYERS: Layer[] = [
     bg: "#EEF2FF",
     border: "#C7D2FE",
     nodes: [
-      { id: "chat", label: "Chat", sub: "Tool use · Sessions · Vision" },
+      { id: "chat", label: "Chat", sub: "Simple · Orchestrated mode" },
       { id: "docagent", label: "Document Agent", sub: "RAG · Extract · Classify", tag: "Core", tagColor: "#7C3AED" },
+      { id: "agentdash", label: "Agent Dashboard", sub: "Live task status · Stop · Retry", tag: "New", tagColor: "#B45309" },
       { id: "search", label: "Web Search", sub: "DuckDuckGo · Images" },
       { id: "research", label: "Deep Research", sub: "SSE streaming · Citations" },
       { id: "skills", label: "Skills", sub: "10 built-in · Custom" },
-      { id: "settings", label: "Settings", sub: "Theme · Shortcuts · Privacy" },
     ],
   },
   {
@@ -41,11 +41,28 @@ const LAYERS: Layer[] = [
     border: "#BAE6FD",
     nodes: [
       { id: "chatroute", label: "/api/chat", sub: "Tool use · Multi-agent" },
+      { id: "agentroute", label: "/api/agents", sub: "Orchestrate · Registry · Retry", tag: "New", tagColor: "#B45309" },
       { id: "docroute", label: "/api/documents", sub: "Ingest · Query · Transform", tag: "Core", tagColor: "#7C3AED" },
-      { id: "searchroute", label: "/api/websearch", sub: "DuckDuckGo HTML parser" },
       { id: "researchroute", label: "/api/research", sub: "Agent pipeline · SSE" },
       { id: "genroute", label: "/api/generate", sub: "Draft · Transform · Extract" },
       { id: "mcproute", label: "/api/mcp", sub: "MCP tools · Connectors" },
+    ],
+  },
+  {
+    id: "agents",
+    label: "Agent Layer — Orchestrator + Specialized Sub-Agents",
+    color: "#B45309",
+    bg: "#FFFBEB",
+    border: "#FDE68A",
+    nodes: [
+      { id: "orchestrator", label: "Orchestrator", sub: "Task decomposition · Dependency graph · Parallel dispatch", tag: "Core", tagColor: "#7C3AED" },
+      { id: "runner", label: "Runner", sub: "Topological sort · Promise.race · SSE broadcast" },
+      { id: "docagent2", label: "Document Agent", sub: "Parse · Embed · Q&A · Extract · Classify" },
+      { id: "researchagent", label: "Research Agent", sub: "Search · Fetch · Summarize · Synthesize" },
+      { id: "writeragent", label: "Writer Agent", sub: "Draft · Rewrite · Translate · Convert" },
+      { id: "fileagent", label: "File Agent", sub: "Navigate · Rename · Organize · Batch ops" },
+      { id: "synthesisagent", label: "Synthesis Agent", sub: "Merge results · Reconcile · Attribute sources" },
+      { id: "classifieragent", label: "Classifier Agent", sub: "Auto-classify · Tag · Cluster documents" },
     ],
   },
   {
@@ -121,6 +138,12 @@ const FLOWS = [
     label: "Chat + Tool Use (ReAct)",
     color: "#065F46",
     steps: ["User Message", "Ollama + FILE_TOOLS", "Reason: need file?", "Act: tool_call", "Observe: result", "Reason: can answer?", "Final Answer → UI"],
+  },
+  {
+    id: "multiagent",
+    label: "Multi-Agent Orchestration",
+    color: "#B45309",
+    steps: ["Complex Request", "Orchestrator (Ollama)", "Task Graph + Dependencies", "Parallel: Doc Agent + Research Agent", "Sequential: Writer Agent", "Synthesis Agent", "Cross-Agent Citations", "Final Response → UI"],
   },
 ];
 
@@ -329,6 +352,9 @@ export function Diagram() {
                 )}
                 {flow.id === "chat" && (
                   <><strong style={{ color: flow.color }}>ReAct Loop (Reason + Act):</strong> The same pattern used by Codex Agent and Claude. The user's message is sent to Ollama with FILE_TOOLS. Ollama reasons, optionally calls a tool (list directory, read file, write file), observes the result, and loops until it can answer — or reaches the 10-call cap. Destructive tool calls pause the loop and require user confirmation.</>
+                )}
+                {flow.id === "multiagent" && (
+                  <><strong style={{ color: flow.color }}>Multi-Agent Orchestration:</strong> In Orchestrated mode, the Orchestrator (a specialized Ollama call) decomposes the request into a JSON task graph. Independent tasks run in <strong>parallel</strong> via Promise.race — e.g. Document Agent summarizes the contract while Research Agent fetches GDPR law in parallel. Sequential tasks wait for their dependencies. The Synthesis Agent merges all outputs into a final response with cross-agent citations showing which agent contributed what.</>
                 )}
               </div>
             </div>
