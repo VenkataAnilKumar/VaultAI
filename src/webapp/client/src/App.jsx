@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { LockIcon, FolderOpenIcon, MessageSquareIcon, SparklesIcon, PlugIcon, ServerIcon } from 'lucide-react';
+import {
+  LockIcon, MessageSquareIcon, SparklesIcon, PlugIcon, ServerIcon,
+  PlusIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, CpuIcon, TrashIcon
+} from 'lucide-react';
 import FileBrowser from './components/FileBrowser.jsx';
 import Chat from './components/Chat.jsx';
 import GeneratePanel from './components/GeneratePanel.jsx';
@@ -11,15 +14,23 @@ import useStore from './store/useStore.js';
 import { checkOllamaStatus, getModels } from './api/client.js';
 
 const NAV_ITEMS = [
-  { id: 'chat', label: 'Chat', icon: MessageSquareIcon },
-  { id: 'generate', label: 'Generate', icon: SparklesIcon },
-  { id: 'connectors', label: 'Connectors', icon: PlugIcon },
-  { id: 'mcp', label: 'MCP', icon: ServerIcon }
+  { id: 'chat',       label: 'Chat',       icon: MessageSquareIcon },
+  { id: 'generate',   label: 'Generate',   icon: SparklesIcon      },
+  { id: 'connectors', label: 'Connectors', icon: PlugIcon          },
+  { id: 'mcp',        label: 'MCP Tools',  icon: ServerIcon        },
 ];
 
+const TAB_LABELS = {
+  chat: 'Chat', generate: 'Generate',
+  connectors: 'Connectors', mcp: 'MCP Tools',
+};
+
 export default function App() {
-  const { activeTab, setActiveTab, setOllamaConnected, setModels, setWorkingDirectory } = useStore();
-  const [showFileBrowser, setShowFileBrowser] = useState(true);
+  const {
+    activeTab, setActiveTab, setOllamaConnected, setModels,
+    setWorkingDirectory, ollamaConnected, availableModels, clearMessages,
+  } = useStore();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     async function init() {
@@ -30,12 +41,9 @@ export default function App() {
           const data = await getModels();
           setModels(data.models || []);
         }
-      } catch {
-        setOllamaConnected(false);
-      }
+      } catch { setOllamaConnected(false); }
 
-      // Determine working directory
-      for (const dir of ['/home/runner', process.env.HOME, '/tmp']) {
+      for (const dir of ['/home/runner', '/tmp']) {
         if (!dir) continue;
         try {
           const r = await fetch(`/api/files?path=${encodeURIComponent(dir)}`);
@@ -44,79 +52,122 @@ export default function App() {
       }
     }
     init();
-
-    const interval = setInterval(async () => {
-      try {
-        const status = await checkOllamaStatus();
-        setOllamaConnected(status.connected);
-      } catch {
-        setOllamaConnected(false);
-      }
+    const iv = setInterval(async () => {
+      try { const s = await checkOllamaStatus(); setOllamaConnected(s.connected); }
+      catch { setOllamaConnected(false); }
     }, 30000);
-
-    return () => clearInterval(interval);
+    return () => clearInterval(iv);
   }, []);
 
   const renderPanel = () => {
     switch (activeTab) {
-      case 'chat': return <Chat />;
-      case 'generate': return <GeneratePanel />;
+      case 'chat':       return <Chat />;
+      case 'generate':   return <GeneratePanel />;
       case 'connectors': return <ConnectorsPanel />;
-      case 'mcp': return <MCPPanel />;
-      default: return <Chat />;
+      case 'mcp':        return <MCPPanel />;
+      default:           return <Chat />;
     }
   };
 
-  return (
-    <div className="flex h-screen bg-white overflow-hidden">
-      {/* Left sidebar — file browser */}
-      {showFileBrowser && (activeTab === 'chat' || activeTab === 'generate') && (
-        <div className="border-r border-gray-200 flex flex-col flex-shrink-0" style={{ width: 260 }}>
-          <FileBrowser />
-        </div>
-      )}
+  const showFiles = activeTab === 'chat' || activeTab === 'generate';
 
-      {/* Main area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-white flex-shrink-0">
-          <div className="flex items-center gap-3">
-            {(activeTab === 'chat' || activeTab === 'generate') && (
-              <button onClick={() => setShowFileBrowser(v => !v)}
-                className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-                title="Toggle file browser">
-                <FolderOpenIcon size={17} />
-              </button>
-            )}
-            <div className="flex items-center gap-2">
-              <LockIcon size={17} className="text-blue-600" />
-              <span className="font-semibold text-gray-900 text-sm">Vault AI</span>
+  return (
+    <div className="app-shell">
+
+      {/* ── LEFT SIDEBAR ── */}
+      {sidebarOpen && (
+        <aside className="sidebar">
+
+          {/* Traffic lights + collapse */}
+          <div className="sidebar-traffic">
+            <div className="traffic-lights">
+              <span className="tl tl-red" />
+              <span className="tl tl-yellow" />
+              <span className="tl tl-green" />
             </div>
+            <button className="icon-btn" onClick={() => setSidebarOpen(false)} title="Collapse">
+              <PanelLeftCloseIcon size={15} />
+            </button>
           </div>
 
-          {/* Navigation tabs */}
-          <nav className="flex border border-gray-200 rounded-xl overflow-hidden">
+          {/* New chat */}
+          <div className="sidebar-section">
+            <button className="new-thread-btn" onClick={() => { setActiveTab('chat'); clearMessages(); }}>
+              <PlusIcon size={14} />
+              New chat
+            </button>
+          </div>
+
+          {/* Nav */}
+          <nav className="sidebar-nav">
             {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
-                  activeTab === id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
-                }`}>
-                <Icon size={13} />
-                <span className="hidden sm:inline">{label}</span>
+                className={`nav-item ${activeTab === id ? 'nav-item-active' : ''}`}>
+                <Icon size={14} />
+                <span>{label}</span>
               </button>
             ))}
           </nav>
 
-          <ModelPanel />
-        </header>
+          <div className="sidebar-divider" />
 
-        {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          {renderPanel()}
+          {/* Files / thread list */}
+          {showFiles && (
+            <div className="sidebar-files">
+              <FileBrowser />
+            </div>
+          )}
+
+          {/* Bottom — model status */}
+          <div className="sidebar-footer">
+            <div className="model-status">
+              <span className={`status-dot ${ollamaConnected ? 'dot-green' : 'dot-red'}`} />
+              <CpuIcon size={12} />
+              <span>
+                {ollamaConnected
+                  ? `${availableModels.length} model${availableModels.length !== 1 ? 's' : ''} · Ollama`
+                  : 'Ollama offline'}
+              </span>
+            </div>
+          </div>
+        </aside>
+      )}
+
+      {/* ── MAIN AREA ── */}
+      <main className="main-area">
+        <div className="content-card">
+
+          {/* Card header */}
+          <div className="card-header">
+            <div className="card-header-left">
+              {!sidebarOpen && (
+                <button className="icon-btn" onClick={() => setSidebarOpen(true)} title="Open sidebar">
+                  <PanelLeftOpenIcon size={15} />
+                </button>
+              )}
+              <LockIcon size={13} className="text-indigo-500" />
+              <span className="brand-name">Vault AI</span>
+              <span className="header-sep">/</span>
+              <span className="tab-label">{TAB_LABELS[activeTab]}</span>
+            </div>
+            <div className="card-header-right">
+              {activeTab === 'chat' && (
+                <button className="icon-btn" onClick={clearMessages} title="Clear chat">
+                  <TrashIcon size={14} />
+                </button>
+              )}
+              <ModelPanel />
+            </div>
+          </div>
+
+          {/* Panel content */}
+          <div className="card-body">
+            {renderPanel()}
+          </div>
+
+          <StatusBar />
         </div>
-
-        <StatusBar />
-      </div>
+      </main>
     </div>
   );
 }
