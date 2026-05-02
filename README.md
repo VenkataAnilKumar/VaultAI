@@ -2,112 +2,67 @@
 
 **Your files. Your AI. Your privacy.**
 
-Privacy-first, local AI-powered file and document management platform.
-Manage, search, organize, and generate documents through natural language
-conversation with local AI models. No cloud. No data egress. Ever.
+A privacy-first, local AI-powered file and document management platform. Manage, search, organize, and generate documents through natural language — powered entirely by locally-running AI models via Ollama. No cloud. No data egress. No API keys. Ever.
 
 ---
 
-## Repository Structure
+## Features
 
-```
-VaultAI/                          # repo root
-├── README.md
-├── doc/
-│   ├── product/                  # Product docs
-│   │   ├── product-overview.md   # What Vault AI is, personas, market
-│   │   ├── prd.md                # Product requirements, user stories
-│   │   └── roadmap.md            # v1.0 → v4.0 roadmap
-│   ├── technical/                # Technical docs
-│   │   ├── architecture.md       # System design, data flows, API routes
-│   │   ├── features.md           # Detailed feature specifications
-│   │   ├── agents.md             # Multi-agent orchestration architecture
-│   │   ├── connectors.md         # Local data source connectors
-│   │   └── mcp.md                # Model Context Protocol (server + client)
-│   └── prompts/                  # AI build prompts
-│       ├── replit-build-prompt.md     # Full stack build (Replit Agent)
-│       ├── gen-ai-addon-prompt.md     # Gen AI capabilities addon
-│       ├── mobile-app-prompt.md       # Mobile companion app
-│       ├── agents-prompt.md           # Multi-agent orchestration addon
-│       ├── connectors-prompt.md       # Local connectors addon
-│       ├── mcp-prompt.md              # MCP server + client addon
-│       └── system-prompts.md          # All AI system prompts
-│
-└── src/
-    ├── webapp/                   # Main desktop web application
-    │   ├── package.json          # Workspaces: [client, server]
-    │   ├── client/               # React + Vite frontend
-    │   │   └── src/
-    │   │       ├── components/   # UI components
-    │   │       ├── store/        # Zustand state
-    │   │       └── api/          # Axios API client
-    │   └── server/               # Node.js + Express backend
-    │       ├── routes/           # API route handlers
-    │       ├── services/         # Ollama, fileOps, genAI, embeddings
-    │       └── tools/            # File tool definitions (function calling)
-    │
-    ├── landing/                  # Marketing landing page
-    │   ├── public/               # Static assets
-    │   └── src/
-    │       ├── components/       # Shared UI components
-    │       └── sections/         # Page sections (Hero, Features, etc.)
-    │
-    └── mobile/                   # React Native companion app
-        └── src/
-            ├── app/              # Expo Router screens
-            ├── components/       # Mobile UI components
-            ├── store/            # Zustand state
-            ├── api/              # Desktop API client
-            ├── hooks/            # useVaultConnection, useVoiceInput
-            └── constants/        # Theme tokens
-```
+- **Natural Language File Management** — Move, copy, rename, and organize files by just describing what you want
+- **Document Q&A** — Ask questions about any PDF, DOCX, or text file on your machine
+- **Semantic Search** — Find documents by meaning, not just keywords
+- **Document Generation** — Draft, transform, summarize, and extract data from documents
+- **Multi-Agent Orchestration** — Complex tasks automatically split across specialized agents running in parallel
+- **Local Connectors** — Connect to Obsidian vaults, SQLite databases, Git repos, email archives, and browser bookmarks
+- **MCP Integration** — Expose Vault AI tools to Claude Desktop; consume external MCP servers
+- **Mobile Companion** — React Native app for managing files over your local network
 
 ---
 
 ## Tech Stack
 
-| Package | Technology |
+| Layer | Technology |
 |---|---|
-| **webapp/client** | React + Vite + TailwindCSS + Zustand |
-| **webapp/server** | Node.js + Express + Ollama API |
-| **landing** | React + Vite + TailwindCSS |
-| **mobile** | React Native + Expo + NativeWind |
-| **AI Runtime** | Ollama (localhost:11434) |
-| **Vector Store** | SQLite + better-sqlite3 |
+| Frontend | React 18 + Vite + TailwindCSS + Zustand |
+| Backend | Node.js + Express |
+| AI Runtime | Ollama (`localhost:11434`) |
+| Vector Store | SQLite + `better-sqlite3` + `sqlite-vec` |
+| Mobile | React Native + Expo + NativeWind |
 
 ---
 
 ## Prerequisites
 
 - Node.js 18+
-- [Ollama](https://ollama.com) installed and running
-- At least one model pulled:
+- [Ollama](https://ollama.com/download) installed and running locally
+- Recommended models:
 
 ```bash
-ollama pull llama3.2
-ollama pull nomic-embed-text
+ollama pull llama3.2:3b        # file operations (fast)
+ollama pull mistral:7b          # document Q&A
+ollama pull nomic-embed-text    # semantic search (required)
 ```
+
+> The app works with just 1 model installed — it falls back gracefully.
 
 ---
 
 ## Getting Started
 
-### Web App
 ```bash
+# Clone the repo
+git clone https://github.com/VenkataAnilKumar/VaultAI.git
+cd VaultAI
+
+# Install and run the web app
 cd src/webapp
 npm install
 npm run dev
-# Opens at http://localhost:5173
 ```
 
-### Landing Page
-```bash
-cd src/landing
-npm install
-npm run dev
-```
+App runs at **http://localhost:5173** — backend API at **http://localhost:3001**.
 
-### Mobile App
+### Mobile App (optional)
 ```bash
 cd src/mobile
 npm install
@@ -116,30 +71,25 @@ npx expo start
 
 ---
 
-## Core Capabilities
+## Project Structure
 
-- **File Management** — Move, copy, rename, organize via natural language
-- **Document Q&A** — Ask questions about any file on your machine
-- **Semantic Search** — Find documents by meaning across your entire library
-- **Multi-Model AI** — Best model selected automatically per task type
-- **Document Generation** — Draft, transform, synthesize, extract data
-- **Multi-Agent Orchestration** — Complex tasks split across specialized agents running in parallel
-- **Local Connectors** — Read from Obsidian, SQLite, Git, email archives, and browser bookmarks
-- **MCP Integration** — Expose Vault AI tools to Claude Desktop; consume external MCP servers
-- **Privacy First** — Zero data egress, all processing on your device
+```
+src/
+├── webapp/
+│   ├── client/     # React + Vite frontend
+│   └── server/     # Node.js + Express backend
+├── landing/        # Marketing landing page
+└── mobile/         # React Native + Expo companion app
+doc/
+├── product/        # PRD, personas, roadmap
+└── technical/      # Architecture, features, agents, connectors, MCP
+```
 
 ---
 
-## Build Prompts
+## Privacy
 
-To build using Replit Agent, use the prompts in `doc/prompts/`:
-
-| Prompt | Path | Use |
-|---|---|---|
-| `replit-build-prompt.md` | `doc/prompts/` | Build the complete webapp from scratch |
-| `gen-ai-addon-prompt.md` | `doc/prompts/` | Add Gen AI after base app is running |
-| `mobile-app-prompt.md` | `doc/prompts/` | Build the mobile companion app |
-| `agents-prompt.md` | `doc/prompts/` | Add multi-agent orchestration |
-| `connectors-prompt.md` | `doc/prompts/` | Add local data source connectors |
-| `mcp-prompt.md` | `doc/prompts/` | Add MCP server + client support |
-| `system-prompts.md` | `doc/prompts/` | Reference for all in-app AI prompts |
+- All AI inference runs locally via Ollama — no external API calls
+- Files never leave your machine
+- No telemetry, no analytics, no tracking
+- File deletes go to the OS trash — never permanently deleted silently
