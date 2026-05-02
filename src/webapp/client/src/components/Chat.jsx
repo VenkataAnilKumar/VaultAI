@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { SendIcon, AlertCircleIcon, RefreshCwIcon, MicIcon, MicOffIcon, PlayIcon, ZapIcon } from 'lucide-react';
+import { SendIcon, AlertCircleIcon, RefreshCwIcon, MicIcon, MicOffIcon, PlayIcon, ZapIcon, CopyIcon, CheckIcon, ExternalLinkIcon } from 'lucide-react';
 import useStore from '../store/useStore.js';
 import { sendChat, checkOllamaStatus, getModels } from '../api/client.js';
 import MessageBubble from './MessageBubble.jsx';
@@ -7,6 +7,134 @@ import ConfirmDialog from './ConfirmDialog.jsx';
 import WorkflowToggle from './agents/WorkflowToggle.jsx';
 import AgentWorkflowPanel from './agents/AgentWorkflowPanel.jsx';
 import MCPToolBadge from './mcp/MCPToolBadge.jsx';
+
+// ── Copy-able terminal command ─────────────────────────────────
+function CmdLine({ cmd }) {
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    navigator.clipboard.writeText(cmd).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  }
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      background: '#1e1e2e', borderRadius: 8, padding: '7px 10px',
+      fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12, color: '#a6e3a1',
+      gap: 8, userSelect: 'none'
+    }}>
+      <span style={{ flex: 1 }}>{cmd}</span>
+      <button onClick={copy} title="Copy" style={{
+        display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none',
+        cursor: 'pointer', color: copied ? '#a6e3a1' : '#585b70', transition: 'color 0.2s',
+        fontSize: 10, fontFamily: 'inherit', padding: 0
+      }}>
+        {copied ? <><CheckIcon size={12} /> copied</> : <CopyIcon size={12} />}
+      </button>
+    </div>
+  );
+}
+
+// ── Ollama Setup Guide ─────────────────────────────────────────
+// Friendly, non-intimidating guide shown as a secondary option
+// below the primary Demo Mode CTA.
+function OllamaSetupGuide({ onRetry }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{ borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden', textAlign: 'left', background: '#fff' }}>
+      {/* Toggle header */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer',
+          fontSize: 12, fontWeight: 600, color: '#374151'
+        }}
+      >
+        <span>⚙️ Want to use your own files with real AI?</span>
+        <span style={{ fontSize: 16, color: '#9ca3af', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>›</span>
+      </button>
+
+      {open && (
+        <div style={{ padding: '0 14px 14px', borderTop: '1px solid #f3f4f6' }}>
+          <p style={{ fontSize: 11, color: '#6b7280', margin: '10px 0 14px' }}>
+            Vault AI runs AI entirely on your own machine using <strong>Ollama</strong> — free, open-source, and private.
+            Follow these 3 steps once, then restart the app.
+          </p>
+
+          {/* Step 1 */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 5 }}>
+              Step 1 — Install Ollama
+            </div>
+            <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>
+              Download and install from <strong>ollama.com</strong> — available for Mac, Windows, and Linux. Takes about 2 minutes.
+            </p>
+            <a
+              href="https://ollama.com/download"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: 11, fontWeight: 600, color: '#4f46e5',
+                textDecoration: 'none', padding: '5px 10px',
+                background: '#eef2ff', borderRadius: 6, border: '1px solid #c7d2fe'
+              }}
+            >
+              <ExternalLinkIcon size={11} /> Download Ollama →
+            </a>
+          </div>
+
+          {/* Step 2 */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 5 }}>
+              Step 2 — Start Ollama &amp; pull models
+            </div>
+            <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>
+              Open your terminal and run these commands. The first download is ~2 GB total — do it once and it's cached forever.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <CmdLine cmd="ollama serve" />
+              <CmdLine cmd="ollama pull llama3.2" />
+              <CmdLine cmd="ollama pull nomic-embed-text" />
+            </div>
+            <p style={{ fontSize: 10, color: '#9ca3af', marginTop: 6 }}>
+              <strong>llama3.2</strong> handles chat, Q&amp;A, and summarization &nbsp;·&nbsp;
+              <strong>nomic-embed-text</strong> powers document search
+            </p>
+          </div>
+
+          {/* Step 3 */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 5 }}>
+              Step 3 — Reconnect
+            </div>
+            <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>
+              Once Ollama is running, click the button below and Vault AI will detect it automatically.
+            </p>
+            <button
+              onClick={onRetry}
+              style={{
+                width: '100%', padding: '8px', borderRadius: 8,
+                border: '1px solid #d1d5db', background: '#f9fafb',
+                fontSize: 12, fontWeight: 600, color: '#374151',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+              }}
+            >
+              <RefreshCwIcon size={13} /> Check connection
+            </button>
+          </div>
+
+          <div style={{ fontSize: 10, color: '#9ca3af', padding: '8px', background: '#f9fafb', borderRadius: 6, lineHeight: 1.5 }}>
+            💡 <strong>Tip:</strong> You can use Demo Mode right now to explore every feature — no download needed. Switch to real AI whenever you're ready.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Chat() {
   const {
@@ -195,19 +323,8 @@ export default function Chat() {
                 </button>
               </div>
 
-              {/* Ollama setup (secondary) */}
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-left text-sm">
-                <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide">Run with real AI (Ollama)</p>
-                <ol className="list-decimal list-inside space-y-1 text-xs text-gray-500">
-                  <li>Install from <span className="font-mono text-gray-700">ollama.com</span></li>
-                  <li><span className="font-mono bg-gray-100 px-1 rounded">ollama serve</span></li>
-                  <li><span className="font-mono bg-gray-100 px-1 rounded">ollama pull llama3.2</span></li>
-                  <li><span className="font-mono bg-gray-100 px-1 rounded">ollama pull nomic-embed-text</span></li>
-                </ol>
-                <button onClick={handleRetryConnection} className="mt-3 w-full py-2 px-4 bg-white border border-gray-200 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors">
-                  Retry Connection
-                </button>
-              </div>
+              {/* Ollama setup (secondary — upgrade path) */}
+              <OllamaSetupGuide onRetry={handleRetryConnection} />
             </div>
           </div>
         )}
