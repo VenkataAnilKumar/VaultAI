@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   LockIcon, MessageSquareIcon, SparklesIcon, PlugIcon, ServerIcon,
-  PlusIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, CpuIcon, TrashIcon
+  PlusIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, CpuIcon,
+  TrashIcon, SettingsIcon
 } from 'lucide-react';
 import FileBrowser from './components/FileBrowser.jsx';
 import Chat from './components/Chat.jsx';
@@ -10,6 +11,8 @@ import ModelPanel from './components/ModelPanel.jsx';
 import StatusBar from './components/StatusBar.jsx';
 import ConnectorsPanel from './components/connectors/ConnectorsPanel.jsx';
 import MCPPanel from './components/mcp/MCPPanel.jsx';
+import SettingsPanel from './components/SettingsPanel.jsx';
+import { useTheme } from './hooks/useTheme.js';
 import useStore from './store/useStore.js';
 import { checkOllamaStatus, getModels } from './api/client.js';
 
@@ -30,7 +33,10 @@ export default function App() {
     activeTab, setActiveTab, setOllamaConnected, setModels,
     setWorkingDirectory, ollamaConnected, availableModels, clearMessages,
   } = useStore();
+
+  const { theme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -92,7 +98,8 @@ export default function App() {
 
           {/* New chat */}
           <div className="sidebar-section">
-            <button className="new-thread-btn" onClick={() => { setActiveTab('chat'); clearMessages(); }}>
+            <button className="new-thread-btn"
+              onClick={() => { setActiveTab('chat'); clearMessages(); }}>
               <PlusIcon size={14} />
               New chat
             </button>
@@ -118,8 +125,28 @@ export default function App() {
             </div>
           )}
 
-          {/* Bottom — model status */}
+          {/* Bottom — settings + model status */}
           <div className="sidebar-footer">
+            {/* Settings button */}
+            <div className="settings-anchor">
+              <button
+                className={`nav-item ${settingsOpen ? 'nav-item-active' : ''}`}
+                onClick={() => setSettingsOpen(v => !v)}
+              >
+                <SettingsIcon size={14} />
+                <span>Settings</span>
+              </button>
+
+              {settingsOpen && (
+                <SettingsPanel
+                  theme={theme}
+                  setTheme={setTheme}
+                  onClose={() => setSettingsOpen(false)}
+                />
+              )}
+            </div>
+
+            {/* Model status */}
             <div className="model-status">
               <span className={`status-dot ${ollamaConnected ? 'dot-green' : 'dot-red'}`} />
               <CpuIcon size={12} />
