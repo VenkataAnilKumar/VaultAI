@@ -16,7 +16,7 @@ externalPort = 5000
 
 [[ports]]
 localPort = 5173
-externalPort = 80
+externalPort = 5173
 
 [workflows]
 runButton = "Project"
@@ -28,12 +28,11 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd src/webapp && npm install"
-waitForPort = 0
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
 args = "cd src/webapp && npm run dev"
+waitForPort = 5173
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [[workflows.workflow]]
 name = "Install Only"
@@ -52,6 +51,10 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "Vault AI Landing"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start Vault AI"
 
 [[workflows.workflow]]
 name = "Vault AI Landing"
