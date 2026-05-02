@@ -1547,7 +1547,7 @@ body {
 .research-instant-label { font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
 .research-instant-text { font-size: 13px; color: var(--text-1); line-height: 1.5; }
 .research-instant-link {
-  display: inline-flex; align-items: center; gap-3px;
+  display: inline-flex; align-items: center; gap: 3px;
   font-size: 11px; color: var(--accent); text-decoration: none; margin-top: 6px;
 }
 .research-instant-link:hover { text-decoration: underline; }
