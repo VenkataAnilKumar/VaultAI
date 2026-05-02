@@ -256,14 +256,19 @@ server/
 │   ├── research.js            # POST /api/research (SSE streaming)
 │   ├── generate.js            # POST /api/generate/*
 │   ├── documents.js           # POST /api/documents/* (Doc Agent)
-│   ├── agents.js              # POST /api/agents/run
+│   ├── agents.js              # POST /api/agents/orchestrate · GET /api/agents/registry · retry · cancel
 │   ├── connectors.js          # GET/POST /api/connectors/*
 │   └── mcp.js                 # GET/POST /api/mcp/*
 ├── agents/
-│   ├── orchestrator.js        # Multi-agent task orchestration
-│   ├── runner.js              # Agent execution engine
-│   ├── documentAgent.js       # Document Intelligence Agent
-│   └── researchAgent.js       # Deep Research Agent
+│   ├── registry.js            # Agent registry — maps agent IDs to handlers + action lists
+│   ├── orchestrator.js        # Decomposes requests into JSON task graphs
+│   ├── runner.js              # Topological sort + parallel execution engine (Promise.race)
+│   ├── documentAgent.js       # Document Intelligence Agent (parse, embed, Q&A, extract, classify)
+│   ├── researchAgent.js       # Deep Research Agent (search, fetch, summarize, synthesize)
+│   ├── writerAgent.js         # Writer Agent (draft, transform, rewrite, translate)
+│   ├── fileAgent.js           # File Agent (navigate, rename, organize, batch ops)
+│   ├── synthesisAgent.js      # Synthesis Agent (merge results, reconcile, attribute sources)
+│   └── classifierAgent.js     # Classifier Agent (auto-classify, tag, cluster documents)
 ├── services/
 │   ├── ollama.js              # OllamaClient + ModelRouter
 │   ├── parser.js              # Multi-format document parser
@@ -1494,6 +1499,6 @@ Brief reference on how production AI agents compare to Vault AI's approach. Usef
 ---
 
 *Document maintained at: `docs/ARCHITECTURE.md`*  
-*Version: 1.1 — Updated May 2026 with RAG patterns, agent design, and resolved decisions*  
+*Version: 1.2 — Updated May 2026 with RAG patterns, agent design, multi-agent orchestration, and full agent registry*  
 *Previous: `docs/FEATURES.md`*  
 *Next: `docs/BUILD_PLAN.md` — Sprint-by-Sprint Build Plan*
