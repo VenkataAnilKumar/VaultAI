@@ -492,7 +492,7 @@ function HowItWorks() {
     },
   ];
   return (
-    <section className="py-24" style={{ background: 'linear-gradient(180deg, #f8faff 0%, #fff 100%)' }}>
+    <section id="how-it-works" className="py-24" style={{ background: 'linear-gradient(180deg, #f8faff 0%, #fff 100%)' }}>
       <div className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-14 reveal">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-5"
