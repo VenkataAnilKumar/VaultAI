@@ -4,8 +4,16 @@ import {
   PlugIcon, ServerIcon, ShieldCheckIcon, ArrowRightIcon, CheckIcon,
   FolderIcon, GitBranchIcon, DatabaseIcon, BookmarkIcon,
   MailIcon, ZapIcon, UsersIcon, CodeIcon,
-  ChevronRightIcon, LayersIcon
+  ChevronRightIcon, LayersIcon, MenuIcon, XIcon
 } from 'lucide-react';
+
+/* ── App URL — works in dev (localhost:5173) and when deployed ── */
+const APP_URL = (() => {
+  if (typeof window === 'undefined') return '#';
+  const { hostname, protocol, host } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return 'http://localhost:5173';
+  return `${protocol}//${host.replace(':5000', ':5173')}`;
+})();
 
 /* ── Scroll reveal ── */
 function useReveal() {
@@ -21,34 +29,86 @@ function useReveal() {
 }
 
 /* ── NAV ── */
+const NAV_LINKS = [
+  { label: 'Features', href: '#features' },
+  { label: 'How it Works', href: '#how-it-works' },
+  { label: 'Privacy', href: '#privacy' },
+];
+
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 30);
     window.addEventListener('scroll', h);
     return () => window.removeEventListener('scroll', h);
   }, []);
+
+  const closeMobile = () => setMobileOpen(false);
+
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-xl border-b border-gray-100 shadow-sm py-3' : 'bg-transparent py-5'}`}>
-      <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
-            <LockIcon size={17} className="text-white" />
+    <>
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled || mobileOpen ? 'bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-sm py-3' : 'bg-transparent py-5'
+      }`}>
+        <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
+          {/* Logo */}
+          <a href="/" className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
+              <LockIcon size={17} className="text-white" />
+            </div>
+            <span className="font-black text-gray-900 text-xl tracking-tight">
+              Vault <span className="text-gradient-blue">AI</span>
+            </span>
+          </a>
+
+          {/* Desktop links */}
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-500">
+            {NAV_LINKS.map(l => (
+              <a key={l.label} href={l.href}
+                className="hover:text-gray-900 transition-colors duration-200">
+                {l.label}
+              </a>
+            ))}
           </div>
-          <span className="font-black text-gray-900 text-xl tracking-tight">Vault <span className="text-gradient-blue">AI</span></span>
+
+          {/* Desktop CTA + Mobile toggle */}
+          <div className="flex items-center gap-3">
+            <a href={APP_URL} target="_blank" rel="noopener noreferrer"
+              className="btn-cta text-white text-sm font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-lg">
+              Open App <ArrowRightIcon size={14} />
+            </a>
+            <button
+              onClick={() => setMobileOpen(o => !o)}
+              className="md:hidden w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
+              aria-label="Toggle menu">
+              {mobileOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
+            </button>
+          </div>
         </div>
-        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-500">
-          {['Features', 'Privacy'].map(l => (
-            <a key={l} href={`#${l.toLowerCase()}`} className="hover:text-gray-900 transition-colors">{l}</a>
-          ))}
+
+        {/* Mobile dropdown */}
+        <div className={`md:hidden overflow-hidden transition-all duration-300 ${
+          mobileOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          <div className="max-w-6xl mx-auto px-6 pb-5 pt-3 flex flex-col gap-1 border-t border-gray-100 mt-3">
+            {NAV_LINKS.map(l => (
+              <a key={l.label} href={l.href} onClick={closeMobile}
+                className="text-gray-700 font-semibold text-base py-2.5 px-3 rounded-xl hover:bg-gray-50 hover:text-blue-600 transition-colors flex items-center justify-between">
+                {l.label}
+                <ChevronRightIcon size={15} className="text-gray-300" />
+              </a>
+            ))}
+            <a href={APP_URL} target="_blank" rel="noopener noreferrer" onClick={closeMobile}
+              className="mt-2 btn-cta text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2">
+              <SparklesIcon size={15} /> Launch Vault AI Free
+            </a>
+          </div>
         </div>
-        <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer"
-          className="btn-cta text-white text-sm font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-lg">
-          Open App <ArrowRightIcon size={14} />
-        </a>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 }
 
@@ -118,7 +178,7 @@ function Hero() {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-          <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer"
+          <a href={APP_URL} target="_blank" rel="noopener noreferrer"
             className="btn-cta text-white font-black px-10 py-4 rounded-2xl text-lg flex items-center gap-3 shadow-2xl"
             style={{ boxShadow: '0 20px 60px rgba(37,99,235,0.35)' }}>
             <SparklesIcon size={20} />
@@ -786,7 +846,7 @@ function CTA() {
           No cloud. No subscriptions. No data leaving your machine. Built for professionals who handle sensitive documents every day.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer"
+          <a href={APP_URL} target="_blank" rel="noopener noreferrer"
             className="bg-white text-blue-900 font-black px-10 py-4 rounded-2xl text-lg flex items-center gap-3 hover:bg-blue-50 transition-all duration-200 shadow-2xl hover:shadow-white/20 hover:-translate-y-1">
             <SparklesIcon size={20} className="text-blue-600" />
             Launch Vault AI Free
