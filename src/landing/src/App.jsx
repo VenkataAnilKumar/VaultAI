@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import {
   LockIcon, MessageSquareIcon, SearchIcon, SparklesIcon, CpuIcon,
   PlugIcon, ServerIcon, ShieldCheckIcon, ArrowRightIcon, CheckIcon,
-  FolderIcon, FileTextIcon, GitBranchIcon, DatabaseIcon, BookmarkIcon,
-  MailIcon, ZapIcon, BotIcon, StarIcon, UsersIcon, CodeIcon,
-  ChevronRightIcon, GlobeIcon, TrendingUpIcon, LayersIcon
+  FolderIcon, GitBranchIcon, DatabaseIcon, BookmarkIcon,
+  MailIcon, ZapIcon, UsersIcon, CodeIcon,
+  ChevronRightIcon, LayersIcon, UsersIcon as UsersIcon2
 } from 'lucide-react';
 
 /* ── Scroll reveal ── */
@@ -39,7 +39,7 @@ function Nav() {
           <span className="font-black text-gray-900 text-xl tracking-tight">Vault <span className="text-gradient-blue">AI</span></span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-500">
-          {['Features', 'Privacy', 'Roadmap'].map(l => (
+          {['Features', 'Privacy'].map(l => (
             <a key={l} href={`#${l.toLowerCase()}`} className="hover:text-gray-900 transition-colors">{l}</a>
           ))}
         </div>
@@ -671,56 +671,87 @@ function Personas() {
   );
 }
 
-/* ── ROADMAP ── */
-const ROADMAP = [
-  { v: 'v1.0', label: 'Core', color: '#059669', bg: '#d1fae5', status: 'shipped', items: ['Chat + file browser', 'Multi-model Ollama routing', 'File ops + confirmations', 'PDF, DOCX, TXT, MD'] },
-  { v: 'v1.5', label: 'Intelligence', color: '#2563eb', bg: '#dbeafe', status: 'shipped', items: ['Semantic search (local)', 'Document Q&A + citations', 'Multi-doc synthesis', 'Auto-rename from content'] },
-  { v: 'v2.0', label: 'Generation', color: '#7c3aed', bg: '#ede9fe', status: 'shipped', items: ['Doc generation + streaming', 'Transform & translate', 'Extract to CSV/JSON', '4-tab Generate panel'] },
-  { v: 'v3.0', label: 'Connectors', color: '#ea580c', bg: '#ffedd5', status: 'shipped', items: ['Obsidian, SQLite, Git', 'Email + Bookmarks', 'NL → SQL queries', 'Connector tools in chat'] },
-  { v: 'v3.5', label: 'Multi-Agent', color: '#ec4899', bg: '#fce7f3', status: 'shipped', items: ['Orchestrator + 5 agents', 'Parallel execution', 'Workflow progress panel', 'Agent memory'] },
-  { v: 'v4.0', label: 'MCP', color: '#0891b2', bg: '#cffafe', status: 'shipped', items: ['13 tools exposed', 'Claude Desktop ready', 'SSE + stdio transport', 'External MCP client'] },
-  { v: 'v4.5', label: 'Team', color: '#d97706', bg: '#fef3c7', status: 'next', items: ['Multi-user + RBAC', 'Audit logging', 'Admin console', 'Docker deployment'] },
-  { v: 'v5.0+', label: 'Platform', color: '#6366f1', bg: '#e0e7ff', status: 'future', items: ['Scheduled agents', 'Watch folders', 'Plugin system', 'REST API'] },
-];
+/* ── COMING NEXT ── */
+function ComingNext() {
+  const items = [
+    {
+      emoji: '👥',
+      label: 'Coming soon',
+      labelColor: '#d97706',
+      labelBg: '#fef3c7',
+      title: 'Team Workspaces',
+      desc: 'Multi-user support with role-based access, audit logging, and an admin console — for teams that handle sensitive documents together.',
+      pills: ['RBAC', 'Audit logs', 'Admin console', 'Docker deploy'],
+      color: '#d97706',
+      border: '#fde68a',
+    },
+    {
+      emoji: '⏰',
+      label: 'Coming soon',
+      labelColor: '#7c3aed',
+      labelBg: '#ede9fe',
+      title: 'Scheduled Agents',
+      desc: 'Set Vault AI to work while you sleep. Auto-organize new files, generate weekly summaries, watch folders for changes — on your schedule.',
+      pills: ['Cron scheduling', 'Watch folders', 'Auto-organize', 'Email reports'],
+      color: '#7c3aed',
+      border: '#c4b5fd',
+    },
+    {
+      emoji: '📱',
+      label: 'Coming soon',
+      labelColor: '#0891b2',
+      labelBg: '#cffafe',
+      title: 'Mobile Companion',
+      desc: 'Access your Vault AI from your phone over local WiFi. Chat, search, and trigger file ops from anywhere in your home or office.',
+      pills: ['iOS & Android', 'Local WiFi', 'Voice input', 'Quick actions'],
+      color: '#0891b2',
+      border: '#a5f3fc',
+    },
+  ];
 
-function Roadmap() {
   return (
-    <section id="roadmap" className="py-24" style={{ background: 'linear-gradient(180deg, #f8faff 0%, #fff 100%)' }}>
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-14 reveal">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-5"
-            style={{ background: '#ede9fe', color: '#7c3aed' }}>
-            <TrendingUpIcon size={13} /> Roadmap
+    <section className="py-20 bg-white">
+      <div className="max-w-5xl mx-auto px-6">
+        {/* Header */}
+        <div className="reveal flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-3"
+              style={{ background: '#f0fdf4', color: '#059669' }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
+              v4.0 shipped · What's next
+            </div>
+            <h2 className="font-black text-gray-900 text-2xl md:text-3xl tracking-tight">
+              What's coming next in Vault AI
+            </h2>
           </div>
-          <h2 className="font-black text-gray-900 tracking-tight mb-4"
-            style={{ fontSize: 'clamp(32px, 5vw, 52px)' }}>
-            From MVP to platform.<br />
-            <span className="text-gradient-blue">The full vision.</span>
-          </h2>
+          <p className="text-gray-400 text-sm max-w-xs leading-relaxed">
+            The core platform is live. These three capabilities are next on the roadmap.
+          </p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {ROADMAP.map((r, i) => (
-            <div key={i} className="card-hover reveal rounded-2xl p-5 border bg-white shadow-sm hover:shadow-lg transition-all duration-300"
-              style={{ borderColor: r.bg, transitionDelay: `${i * 60}ms` }}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-black text-sm font-mono" style={{ color: r.color }}>{r.v}</span>
-                <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
-                  r.status === 'shipped' ? 'text-green-700' :
-                  r.status === 'next' ? 'text-blue-700' : 'text-gray-400'
-                }`}
-                  style={{
-                    background: r.status === 'shipped' ? '#d1fae5' : r.status === 'next' ? '#dbeafe' : '#f3f4f6'
-                  }}>
-                  {r.status === 'shipped' ? '✓ Live' : r.status === 'next' ? '→ Next' : '⋯ Planned'}
+
+        {/* 3 cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {items.map((item, i) => (
+            <div key={i}
+              className="card-hover reveal rounded-2xl p-6 border-2 bg-white hover:shadow-xl transition-all duration-300"
+              style={{ borderColor: item.border, transitionDelay: `${i * 90}ms` }}>
+              {/* Top row */}
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-3xl">{item.emoji}</span>
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full"
+                  style={{ background: item.labelBg, color: item.labelColor }}>
+                  {item.label}
                 </span>
               </div>
-              <p className="font-bold text-gray-900 text-sm mb-3">{r.label}</p>
-              <div className="space-y-1.5">
-                {r.items.map(it => (
-                  <div key={it} className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: r.color }} />
-                    <span className="text-xs text-gray-500">{it}</span>
-                  </div>
+              <h3 className="font-black text-gray-900 text-lg mb-2">{item.title}</h3>
+              <p className="text-gray-500 text-sm leading-relaxed mb-5">{item.desc}</p>
+              {/* Pills */}
+              <div className="flex flex-wrap gap-2">
+                {item.pills.map(p => (
+                  <span key={p} className="text-xs font-semibold px-2.5 py-1 rounded-xl"
+                    style={{ background: item.labelBg, color: item.color }}>
+                    {p}
+                  </span>
                 ))}
               </div>
             </div>
@@ -818,7 +849,7 @@ export default function App() {
       <Connectors />
       <Privacy />
       <Personas />
-      <Roadmap />
+      <ComingNext />
       <CTA />
       <Footer />
     </div>
