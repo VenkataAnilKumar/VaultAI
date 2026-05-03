@@ -74,7 +74,7 @@ waitForPort = 5000
 
 [deployment]
 run = ["sh", "-c", "cd src/webapp && NODE_ENV=production npm run start"]
-build = ["sh", "-c", "cd src/webapp && npm install && npm run build"]
+build = ["sh", "-c", "cd src/webapp && npm install && npm run build && cd ../landing && npm install && npm run build"]
 deploymentTarget = "vm"
 
 [agent]

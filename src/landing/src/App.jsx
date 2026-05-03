@@ -10,10 +10,10 @@ import {
 
 /* ── App URL ── */
 const APP_URL = (() => {
-  if (typeof window === 'undefined') return '#';
-  const { hostname, protocol, host } = window.location;
+  if (typeof window === 'undefined') return '/app';
+  const { hostname } = window.location;
   if (hostname === 'localhost' || hostname === '127.0.0.1') return 'http://localhost:5173';
-  return `${protocol}//${host.replace(':5000', ':5173')}`;
+  return '/app';
 })();
 
 /* ── Announcement bar ── */
