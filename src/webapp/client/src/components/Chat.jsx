@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   SendIcon, AlertCircleIcon, RefreshCwIcon, MicIcon, MicOffIcon,
   PlayIcon, ZapIcon, WrenchIcon, XIcon, PaperclipIcon, FileTextIcon,
@@ -11,6 +11,7 @@ import ConfirmDialog from './ConfirmDialog.jsx';
 import WorkflowToggle from './agents/WorkflowToggle.jsx';
 import AgentWorkflowPanel from './agents/AgentWorkflowPanel.jsx';
 import MCPToolBadge from './mcp/MCPToolBadge.jsx';
+import { useToast } from '../hooks/useToast.js';
 
 // ── Text file extensions handled client-side ────────────────────
 const TEXT_EXTS = new Set([
@@ -233,6 +234,9 @@ export default function Chat() {
   // TTS
   const { speakingId, speak } = useTTS();
 
+  // Toast
+  const { success, info, warn } = useToast();
+
   // Drag-and-drop state
   const [isDragging, setIsDragging]       = useState(false);
   const [attachedFile, setAttachedFile]   = useState(null);
@@ -296,10 +300,14 @@ export default function Chat() {
     const ext = '.' + file.name.split('.').pop().toLowerCase();
     if (TEXT_EXTS.has(ext)) {
       const reader = new FileReader();
-      reader.onload = (ev) => setAttachedFile({ name: file.name, content: ev.target.result, size: file.size, isText: true });
+      reader.onload = (ev) => {
+        setAttachedFile({ name: file.name, content: ev.target.result, size: file.size, isText: true });
+        success(`Attached ${file.name}`);
+      };
       reader.readAsText(file);
     } else {
       setAttachedFile({ name: file.name, content: null, size: file.size, isText: false });
+      warn(`${file.name} — binary file. Open it in Documents for full analysis.`);
     }
   }
 
@@ -416,6 +424,15 @@ export default function Chat() {
   // ── Export handlers ──────────────────────────────────────────
   const [exportOpen, setExportOpen] = useState(false);
 
+  // ⌘E export shortcut
+  useEffect(() => {
+    function onExportShortcut() {
+      if (messages.length > 0) setExportOpen(v => !v);
+    }
+    window.addEventListener('vault:export-chat', onExportShortcut);
+    return () => window.removeEventListener('vault:export-chat', onExportShortcut);
+  }, [messages.length]);
+
   function exportMarkdown() {
     const lines = messages.map(m => {
       const role = m.role === 'user' ? '**You**' : '**Vault AI**';
@@ -430,6 +447,7 @@ export default function Chat() {
     a.click();
     URL.revokeObjectURL(a.href);
     setExportOpen(false);
+    success('Chat downloaded as Markdown');
   }
 
   function exportHtmlPrint() {
@@ -454,6 +472,7 @@ h1{font-size:18px;color:#4F46E5;margin-bottom:4px}.meta{font-size:12px;color:#9C
     w.document.close();
     setTimeout(() => w.print(), 400);
     setExportOpen(false);
+    info('Print dialog opened');
   }
 
   const SUGGESTIONS = [
@@ -513,7 +532,7 @@ h1{font-size:18px;color:#4F46E5;margin-bottom:4px}.meta{font-size:12px;color:#9C
           {/* Export dropdown */}
           {messages.length > 0 && (
             <div className="export-wrap">
-              <button className="voice-btn" onClick={() => setExportOpen(v => !v)} title="Export chat">
+              <button className="voice-btn" onClick={() => setExportOpen(v => !v)} title="Export chat (⌘E)">
                 <DownloadIcon size={12} /> Export
               </button>
               {exportOpen && (
@@ -646,10 +665,14 @@ h1{font-size:18px;color:#4F46E5;margin-bottom:4px}.meta{font-size:12px;color:#9C
                 const ext = '.' + file.name.split('.').pop().toLowerCase();
                 if (TEXT_EXTS.has(ext)) {
                   const reader = new FileReader();
-                  reader.onload = (ev) => setAttachedFile({ name: file.name, content: ev.target.result, size: file.size, isText: true });
+                  reader.onload = (ev) => {
+                    setAttachedFile({ name: file.name, content: ev.target.result, size: file.size, isText: true });
+                    success(`Attached ${file.name}`);
+                  };
                   reader.readAsText(file);
                 } else {
                   setAttachedFile({ name: file.name, content: null, size: file.size, isText: false });
+                  warn(`${file.name} — binary file. Open it in Documents for full analysis.`);
                 }
                 e.target.value = '';
               }}

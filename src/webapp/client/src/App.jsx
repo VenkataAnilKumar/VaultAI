@@ -3,7 +3,7 @@ import {
   LockIcon, MessageSquareIcon, SparklesIcon, PlugIcon, ServerIcon,
   PlusIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, CpuIcon,
   TrashIcon, SettingsIcon, ZapIcon, FileTextIcon, GlobeIcon, PlayIcon,
-  MenuIcon, BarChart2Icon, EyeIcon
+  MenuIcon, BarChart2Icon, EyeIcon, CalendarIcon
 } from 'lucide-react';
 import FileBrowser from './components/FileBrowser.jsx';
 import Chat from './components/Chat.jsx';
@@ -14,10 +14,12 @@ import SessionHistory from './components/SessionHistory.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import UsageDashboard from './components/UsageDashboard.jsx';
 import FileWatcher from './components/FileWatcher.jsx';
+import DigestPanel from './components/DigestPanel.jsx';
 import { useTheme } from './hooks/useTheme.js';
 import { useSessionHistory } from './hooks/useSessionHistory.js';
 import useStore from './store/useStore.js';
 import { checkOllamaStatus, getModels } from './api/client.js';
+import ToastContainer from './components/ToastContainer.jsx';
 
 const DocumentAgentPanel = lazy(() => import('./components/document/DocumentAgentPanel.jsx'));
 const ResearchPanel      = lazy(() => import('./components/research/ResearchPanel.jsx'));
@@ -28,8 +30,15 @@ const MCPPanel           = lazy(() => import('./components/mcp/MCPPanel.jsx'));
 
 function PanelSkeleton() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-3)', fontSize: 13 }}>
-      <span style={{ opacity: 0.5 }}>Loading…</span>
+    <div className="panel-skeleton">
+      <div className="skel-block skel-title" />
+      <div className="skel-block skel-line" />
+      <div className="skel-block skel-line skel-line-short" />
+      <div className="skel-block skel-line" />
+      <div style={{ height: 20 }} />
+      <div className="skel-block skel-title skel-title-sm" />
+      <div className="skel-block skel-line" />
+      <div className="skel-block skel-line skel-line-medium" />
     </div>
   );
 }
@@ -71,6 +80,7 @@ export default function App() {
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [showUsage, setShowUsage]         = useState(false);
   const [showWatcher, setShowWatcher]     = useState(false);
+  const [showDigest, setShowDigest]       = useState(false);
 
   // Mobile detection
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -142,6 +152,7 @@ export default function App() {
     if (e.key === 'k' || e.key === 'K') { e.preventDefault(); setActiveTab('chat'); clearMessages(); setActiveSessionId(null); }
     if (e.key === 'b' || e.key === 'B') { e.preventDefault(); setSidebarOpen(v => !v); }
     if (e.key === ',') { e.preventDefault(); setSettingsOpen(v => !v); }
+    if (e.key === 'e' || e.key === 'E') { e.preventDefault(); window.dispatchEvent(new CustomEvent('vault:export-chat')); }
   }, [setActiveTab, clearMessages]);
 
   useEffect(() => {
@@ -243,6 +254,11 @@ export default function App() {
               <UsageDashboard onClose={() => setShowUsage(false)} />
             )}
 
+            {/* Digest Panel widget */}
+            {showDigest && (
+              <DigestPanel />
+            )}
+
             {!demoMode && !ollamaConnected && (
               <button className="demo-launch-btn" onClick={activateDemoMode}>
                 <PlayIcon size={12} /> Try Demo Mode
@@ -252,12 +268,16 @@ export default function App() {
             {/* Quick-action row: Watcher + Stats + Settings */}
             <div className="sidebar-quick-row">
               <button className={`sidebar-quick-btn ${showWatcher ? 'sidebar-quick-btn-active' : ''}`}
-                onClick={() => setShowWatcher(v => !v)} title="File Watcher">
+                onClick={() => { setShowWatcher(v => !v); setShowUsage(false); setShowDigest(false); }} title="File Watcher">
                 <EyeIcon size={12} />
               </button>
               <button className={`sidebar-quick-btn ${showUsage ? 'sidebar-quick-btn-active' : ''}`}
-                onClick={() => { setShowUsage(v => !v); setShowWatcher(false); }} title="Usage stats">
+                onClick={() => { setShowUsage(v => !v); setShowWatcher(false); setShowDigest(false); }} title="Usage stats">
                 <BarChart2Icon size={12} />
+              </button>
+              <button className={`sidebar-quick-btn ${showDigest ? 'sidebar-quick-btn-active' : ''}`}
+                onClick={() => { setShowDigest(v => !v); setShowWatcher(false); setShowUsage(false); }} title="Scheduled Digests">
+                <CalendarIcon size={12} />
               </button>
               <div className="settings-anchor" style={{ flex: 1 }}>
                 <button className={`nav-item ${settingsOpen ? 'nav-item-active' : ''}`}
@@ -352,6 +372,7 @@ export default function App() {
           </nav>
         )}
       </main>
+      <ToastContainer />
     </div>
   );
 }

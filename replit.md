@@ -320,11 +320,19 @@ cd src/landing && npm install && npm run dev
 | 8 | **Voice output (TTS)** | `useTTS` hook using Web Speech API; "🔊 Read" button on every AI bubble; pulsing stop indicator |
 | 10 | **Usage dashboard** | `useStats` hook (localStorage); `UsageDashboard.jsx` with today/all-time tiles + 7-day bar chart |
 
+### ✅ Tier 4 — Complete (Polish + Scheduled Summaries)
+| # | Feature | Implementation |
+|---|---------|---------------|
+| P1 | **Animated skeleton loaders** | `PanelSkeleton` → shimmer-animated `skel-block` CSS, replaces plain "Loading…" text |
+| P2 | **Toast notifications** | `useToast` (Zustand) + `ToastContainer.jsx`; fire on file attach, binary file warn, MD/PDF export confirm |
+| P3 | **⌘E export shortcut** | `vault:export-chat` custom event dispatched from `App.jsx`, listened in `Chat.jsx` |
+| P4 | **Mobile toolbar fixes** | `@media ≤600px` rules: toolbar no-wrap/scroll, compact button sizes, export dropdown positioning |
+| 11 | **Scheduled summaries** | `server/routes/digest.js` — SQLite-backed, scans dirs for changed files, AI summary, 5-min scheduler loop; `DigestPanel.jsx` with History/Schedule tabs, Run-now strip, collapsible digest cards, interval config, per-dir management |
+
 ### 🔜 Remaining
 | # | Feature | Notes |
 |---|---------|-------|
 | 9 | **More connectors** | Notion, GitHub Issues, browser history |
-| 11 | **Scheduled summaries** | Daily digest of watched folder changes |
 
 ---
 
