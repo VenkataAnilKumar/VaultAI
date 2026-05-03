@@ -126,10 +126,10 @@ function Nav() {
 
 /* ── TICKER ── */
 const TICKER_ITEMS = [
-  '🔒 100% Local Processing', '⚡ 6 Specialized AI Agents', '🔍 Semantic Search',
-  '📄 Document Generation', '🔌 5 Local Connectors', '🛡️ Zero Data Egress',
-  '🤖 Multi-Model Routing', '🔗 MCP Protocol Support', '🗂️ Natural Language Files',
-  '✅ Works Fully Offline',
+  '🔒 100% Local Processing', '💬 Natural Language File Ops', '🔍 Web + Deep Research',
+  '📄 4-Mode Document Generator', '🧠 12 Built-in Skills', '🔌 5 Local Connectors',
+  '🛡️ Zero Data Egress', '🤖 Multi-Model Routing', '🔗 MCP Protocol — Both Ways',
+  '🌐 URL Summarizer', '📂 Drag-Drop Document Upload', '✅ Works Fully Offline',
 ];
 function Ticker() {
   const items = [...TICKER_ITEMS, ...TICKER_ITEMS];
@@ -260,8 +260,8 @@ function Hero() {
               <CpuIcon size={16} style={{ color: '#818CF8' }} />
             </div>
             <div>
-              <div className="text-xs font-bold" style={{ color: '#F0F0F8' }}>6 AI Agents Active</div>
-              <div className="text-xs" style={{ color: '#4E4E6A' }}>llama3.2 · mistral</div>
+              <div className="text-xs font-bold" style={{ color: '#F0F0F8' }}>7 Panels · 12+ Skills</div>
+              <div className="text-xs" style={{ color: '#4E4E6A' }}>llama3.2 · mistral · phi3</div>
             </div>
           </div>
           <div className="animate-float absolute right-10 -bottom-5 z-10 rounded-2xl px-4 py-2.5 flex items-center gap-2 border"
@@ -319,11 +319,11 @@ function Hero() {
 /* ── STATS ── */
 function Stats() {
   const items = [
-    { v: '100%', label: 'Local Processing', color: '#2563eb', bg: '#dbeafe' },
-    { v: '<2min', label: 'Time to First File Op', color: '#7c3aed', bg: '#ede9fe' },
-    { v: '6', label: 'Specialized AI Agents', color: '#ec4899', bg: '#fce7f3' },
+    { v: '7', label: 'Feature Panels', color: '#2563eb', bg: '#dbeafe' },
+    { v: '12+', label: 'Built-in Skills', color: '#7c3aed', bg: '#ede9fe' },
+    { v: '4', label: 'Generate Modes', color: '#ec4899', bg: '#fce7f3' },
     { v: '13', label: 'MCP Tools Exposed', color: '#059669', bg: '#d1fae5' },
-    { v: '5+', label: 'Local Data Connectors', color: '#ea580c', bg: '#ffedd5' },
+    { v: '5', label: 'Local Data Connectors', color: '#ea580c', bg: '#ffedd5' },
     { v: '0', label: 'External Network Calls', color: '#0891b2', bg: '#cffafe' },
   ];
   return (
@@ -346,18 +346,22 @@ function Stats() {
 function AppPreview() {
   const [activeTab, setActiveTab] = useState('chat');
   const tabs = [
-    { id: 'chat', label: '💬 Chat', desc: 'Natural language file operations' },
-    { id: 'docs', label: '📄 Documents', desc: 'Summarize, extract, classify' },
-    { id: 'research', label: '🔍 Research', desc: 'Web + local docs, privately' },
+    { id: 'chat',     label: '💬 Chat',      desc: 'Natural language file operations' },
+    { id: 'docs',     label: '📄 Documents', desc: 'Summarize, extract, classify' },
+    { id: 'research', label: '🔍 Research',  desc: 'Web search, deep research & URL summarize' },
+    { id: 'skills',   label: '🧠 Skills',    desc: '12 built-in skills + custom builder' },
+    { id: 'generate', label: '✨ Generate',  desc: 'Create, transform, synthesize, extract' },
+    { id: 'mcp',      label: '🔗 MCP',       desc: 'Expose & consume MCP servers' },
   ];
 
   const sidebarItems = [
-    { icon: MessageSquareIcon, label: 'Chat', active: activeTab === 'chat' },
-    { icon: FileTextIcon, label: 'Documents', active: activeTab === 'docs' },
-    { icon: GlobeIcon, label: 'Research', active: activeTab === 'research' },
-    { icon: SparklesIcon, label: 'Skills', active: false },
-    { icon: SlidersIcon, label: 'Generate', active: false },
-    { icon: PlugIcon, label: 'Connectors', active: false },
+    { icon: MessageSquareIcon, label: 'Chat',       active: activeTab === 'chat'     },
+    { icon: FileTextIcon,      label: 'Documents',  active: activeTab === 'docs'     },
+    { icon: GlobeIcon,         label: 'Research',   active: activeTab === 'research' },
+    { icon: SparklesIcon,      label: 'Skills',     active: activeTab === 'skills'   },
+    { icon: SlidersIcon,       label: 'Generate',   active: activeTab === 'generate' },
+    { icon: PlugIcon,          label: 'Connectors', active: false                    },
+    { icon: ServerIcon,        label: 'MCP',        active: activeTab === 'mcp'      },
   ];
 
   return (
@@ -376,10 +380,10 @@ function AppPreview() {
             A full-featured AI workspace for your local files — not a chatbot wrapper.
           </p>
           {/* Tab selector */}
-          <div className="flex items-center justify-center gap-3 mt-8">
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-8">
             {tabs.map(t => (
               <button key={t.id} onClick={() => setActiveTab(t.id)}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+                className="px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200"
                 style={activeTab === t.id
                   ? { background: 'linear-gradient(135deg, #6366F1, #8b5cf6)', color: 'white', boxShadow: '0 4px 16px rgba(99,102,241,0.35)' }
                   : { background: 'white', color: '#6b7280', border: '1.5px solid #e5e7eb' }}>
@@ -387,6 +391,9 @@ function AppPreview() {
               </button>
             ))}
           </div>
+          {activeTab && (
+            <p className="text-sm text-gray-400 mt-3">{tabs.find(t => t.id === activeTab)?.desc}</p>
+          )}
         </div>
 
         {/* Dark app window */}
@@ -434,7 +441,10 @@ function AppPreview() {
               </div>
               <div className="flex flex-col gap-0.5 px-2 py-1">
                 {sidebarItems.map((item, i) => (
-                  <button key={i} onClick={() => item.label !== 'Chat' && setActiveTab(item.label.toLowerCase())}
+                  <button key={i} onClick={() => {
+                    const id = item.label === 'Connectors' ? 'docs' : item.label.toLowerCase();
+                    setActiveTab(id);
+                  }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-left transition-all"
                     style={item.active
                       ? { background: '#1C1850', color: '#818CF8', boxShadow: 'inset 3px 0 0 #6366F1' }
@@ -459,7 +469,12 @@ function AppPreview() {
                 style={{ borderColor: '#1E1E2A' }}>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold" style={{ color: '#F0F0F8' }}>
-                    {activeTab === 'chat' ? '⚡ Simple' : activeTab === 'docs' ? '📚 My Documents' : '🔍 Web Search'}
+                    {activeTab === 'chat' ? '⚡ Simple'
+                      : activeTab === 'docs' ? '📚 My Documents'
+                      : activeTab === 'research' ? '🔍 Web Search'
+                      : activeTab === 'skills' ? '🧠 Skills Library'
+                      : activeTab === 'generate' ? '✨ Create Document'
+                      : '🔗 MCP Server Hub'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -519,6 +534,14 @@ function AppPreview() {
 
               {activeTab === 'research' && (
                 <div className="flex-1 flex flex-col p-5">
+                  <div className="flex gap-2 mb-3">
+                    {['Web Search', 'Deep Research', 'Summarize URL'].map((m, i) => (
+                      <button key={i} className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
+                        style={i === 0 ? { background: '#6366F1', color: 'white', borderColor: '#6366F1' } : { background: 'transparent', color: '#6E6E8A', borderColor: '#1E1E2A' }}>
+                        {m}
+                      </button>
+                    ))}
+                  </div>
                   <div className="flex gap-2 mb-4">
                     <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border" style={{ background: '#16161D', borderColor: '#1E1E2A' }}>
                       <SearchIcon size={13} style={{ color: '#4E4E6A' }} />
@@ -537,6 +560,94 @@ function AppPreview() {
                         <p className="text-xs leading-relaxed" style={{ color: '#9898B8' }}>{r.snippet}</p>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'skills' && (
+                <div className="flex-1 p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#4E4E6A' }}>12 Built-in Skills</span>
+                    <button className="px-3 py-1 rounded-lg text-xs font-bold" style={{ background: 'rgba(99,102,241,0.15)', color: '#818CF8' }}>+ Custom Skill</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { name: 'Summarize Document', icon: '📄', color: '#6366F1' },
+                      { name: 'Extract Key Dates', icon: '📅', color: '#059669' },
+                      { name: 'Translate File', icon: '🌐', color: '#ea580c' },
+                      { name: 'Classify & Tag', icon: '🏷️', color: '#7c3aed' },
+                      { name: 'Find Duplicates', icon: '🔍', color: '#2563eb' },
+                      { name: 'Generate Report', icon: '📊', color: '#ec4899' },
+                    ].map((s, i) => (
+                      <div key={i} className="flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all"
+                        style={{ background: '#16161D', borderColor: '#1E1E2A' }}>
+                        <span className="text-base">{s.icon}</span>
+                        <span className="text-xs font-medium" style={{ color: '#D0D0E8' }}>{s.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 p-3 rounded-xl border border-dashed" style={{ borderColor: '#2A2A3A' }}>
+                    <p className="text-xs text-center" style={{ color: '#4E4E6A' }}>+ 6 more built-in · Build your own with custom prompts</p>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'generate' && (
+                <div className="flex-1 flex flex-col p-5">
+                  <div className="flex gap-2 mb-4">
+                    {['Create', 'Transform', 'Synthesize', 'Extract'].map((m, i) => (
+                      <button key={i} className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
+                        style={i === 0 ? { background: '#6366F1', color: 'white', borderColor: '#6366F1' } : { background: 'transparent', color: '#6E6E8A', borderColor: '#1E1E2A' }}>
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mb-3">
+                    <textarea readOnly rows={2}
+                      className="w-full bg-transparent text-xs rounded-xl border p-3 resize-none outline-none"
+                      style={{ background: '#16161D', borderColor: '#1E1E2A', color: '#9898B8' }}
+                      value="Write a professional NDA between Acme Corp and a freelance contractor. Include 2-year confidentiality, IP assignment, and California jurisdiction." />
+                  </div>
+                  <div className="flex-1 p-4 rounded-xl border" style={{ background: '#16161D', borderColor: '#1E1E2A' }}>
+                    <p className="text-xs font-semibold mb-2" style={{ color: '#818CF8' }}>Generated: NDA_Draft.md</p>
+                    <p className="text-xs leading-relaxed" style={{ color: '#9898B8' }}>
+                      <strong style={{ color: '#C8C8E8' }}>NON-DISCLOSURE AGREEMENT</strong><br /><br />
+                      This Agreement is entered into as of [Date] between Acme Corp ("Company") and [Contractor Name] ("Contractor")...<br /><br />
+                      <span style={{ color: '#4E4E6A' }}>▼ Full document · 847 words · Download ↓ Copy ⎘</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'mcp' && (
+                <div className="flex-1 p-5">
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#4E4E6A' }}>Vault AI MCP Server</p>
+                    <div className="flex items-center justify-between p-3 rounded-xl border" style={{ background: '#16161D', borderColor: '#1E1E2A' }}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        <span className="text-xs font-medium" style={{ color: '#D0D0E8' }}>vault-ai · SSE · :3002/sse</span>
+                      </div>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>13 tools</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#4E4E6A' }}>External Servers</p>
+                    <div className="space-y-2">
+                      {[
+                        { name: 'Brave Search', status: 'connected', color: '#4ade80' },
+                        { name: 'GitHub MCP', status: 'connected', color: '#4ade80' },
+                        { name: 'Postgres', status: 'idle', color: '#818CF8' },
+                      ].map((s, i) => (
+                        <div key={i} className="flex items-center justify-between p-2.5 rounded-xl border" style={{ background: '#16161D', borderColor: '#1E1E2A' }}>
+                          <span className="text-xs font-medium" style={{ color: '#D0D0E8' }}>{s.name}</span>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
+                            <span className="text-xs" style={{ color: s.color }}>{s.status}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -560,38 +671,50 @@ const FEATURES = [
   {
     icon: MessageSquareIcon, color: '#2563eb', bg: '#dbeafe', lightBg: '#eff6ff',
     title: 'Natural Language File Ops',
-    desc: 'Move, copy, rename, delete, and organize files just by typing. "Move all invoices to Finance and rename by date" — done in seconds.',
-    tags: ['Move · Copy · Rename', 'Bulk operations', 'Smart confirmation', '🎤 Voice input'],
+    desc: 'Move, copy, rename, delete, and organize files just by typing. "Move all invoices to Finance and rename by date" — done in seconds with multi-agent confirmation.',
+    tags: ['Move · Copy · Rename', 'Bulk operations', 'Agent confirmation', 'Trash-safe deletes'],
   },
   {
-    icon: SearchIcon, color: '#7c3aed', bg: '#ede9fe', lightBg: '#f5f3ff',
-    title: 'Semantic Search',
-    desc: 'Search across all your documents by meaning, not keywords. Find "termination clauses" across 1,000 contracts without exact wording.',
-    tags: ['Local embeddings', 'Cross-doc search', 'Source citations'],
+    icon: FileTextIcon, color: '#7c3aed', bg: '#ede9fe', lightBg: '#f5f3ff',
+    title: 'Document Intelligence',
+    desc: 'Drag-and-drop upload any file. Summarize, extract fields, classify, or ask questions — all locally via your AI models with semantic search across your library.',
+    tags: ['Drag-drop upload', 'Summarize · Q&A', 'Semantic search', 'Extract fields'],
+  },
+  {
+    icon: SearchIcon, color: '#059669', bg: '#d1fae5', lightBg: '#f0fdf4',
+    title: 'Research Panel',
+    desc: 'Three modes: quick web search via DuckDuckGo, AI-powered deep research that synthesizes multiple sources with sub-questions, and one-click URL summarization.',
+    tags: ['DuckDuckGo search', 'Deep research + AI synthesis', 'Summarize any URL', 'Save to library'],
   },
   {
     icon: SparklesIcon, color: '#ec4899', bg: '#fce7f3', lightBg: '#fdf2f8',
-    title: 'Document Generation',
-    desc: 'Create, transform, synthesize, and extract. Generate a proposal from your notes. Translate a contract. Extract all dates to CSV.',
-    tags: ['Create from prompt', 'Transform & translate', 'Extract to CSV'],
+    title: '4-Mode Document Generator',
+    desc: 'Create documents from prompts, transform existing files (translate, reformat, rewrite), synthesize multiple sources into one, or extract structured data to JSON/CSV.',
+    tags: ['Create from prompt', 'Transform & translate', 'Synthesize sources', 'Extract to CSV/JSON'],
   },
   {
-    icon: CpuIcon, color: '#059669', bg: '#d1fae5', lightBg: '#f0fdf4',
-    title: 'Multi-Model Intelligence',
-    desc: 'Six specialized AI agents via Ollama, auto-routed per task. File ops use a fast 3B model. Q&A uses your largest reasoning model.',
-    tags: ['Auto model routing', '6 specialist agents', '1 model minimum'],
+    icon: ZapIcon, color: '#d97706', bg: '#fef3c7', lightBg: '#fffbeb',
+    title: 'Skills Library',
+    desc: '12 built-in one-click skills for common tasks. Build your own custom skills with a name, prompt template, and icon. Skills appear instantly in chat and the sidebar.',
+    tags: ['12 built-in skills', 'Custom skill builder', 'One-click execute', 'Context-aware prompts'],
   },
   {
     icon: PlugIcon, color: '#ea580c', bg: '#ffedd5', lightBg: '#fff7ed',
-    title: 'Local Connectors',
-    desc: 'Query Obsidian notes, SQLite databases, Git history, email archives, and browser bookmarks. All local, all private.',
-    tags: ['Obsidian · SQLite', 'Git · Email', 'Browser bookmarks'],
+    title: '5 Local Data Connectors',
+    desc: 'Query Obsidian notes, SQLite databases, Git commit history, email archives (.mbox/.eml), and browser bookmarks directly in chat. Zero cloud, fully private.',
+    tags: ['Obsidian · SQLite', 'Git · Email · Bookmarks', 'Chat-native queries', '100% local'],
   },
   {
     icon: ServerIcon, color: '#0891b2', bg: '#cffafe', lightBg: '#ecfeff',
-    title: 'MCP Protocol Hub',
-    desc: 'Expose 13 Vault AI tools to Claude Desktop or Cursor via MCP. Or bring in external MCP servers — Brave Search, GitHub, Postgres.',
-    tags: ['Claude Desktop ready', 'SSE + stdio', 'External tool hub'],
+    title: 'MCP Protocol — Both Ways',
+    desc: 'Expose 13 Vault AI file tools to Claude Desktop or Cursor via SSE or stdio. Or consume external MCP servers — Brave Search, GitHub, Postgres, Fetch — inside Vault AI.',
+    tags: ['13 tools exposed', 'Claude Desktop · Cursor', 'SSE + stdio', 'External MCP servers'],
+  },
+  {
+    icon: CpuIcon, color: '#6366f1', bg: '#eef2ff', lightBg: '#f5f3ff',
+    title: 'Multi-Model Routing',
+    desc: 'Specialized agents auto-route tasks to the right model. File ops use a fast lightweight model. Deep research and document Q&A use your most capable reasoning model.',
+    tags: ['Auto model routing', 'Specialist agents', 'Ollama compatible', '1 model minimum'],
   },
 ];
 
@@ -611,10 +734,10 @@ function Features() {
             <span className="text-gradient-blue">Nothing in the cloud.</span>
           </h2>
           <p className="text-gray-500 text-lg max-w-xl mx-auto">
-            A complete AI file platform — management, search, generation, agents, connectors, and MCP — all on your localhost.
+            7 panels: Chat · Documents · Research · Skills · Generate · Connectors · MCP — all running locally on your machine.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {FEATURES.map((f, i) => (
             <div key={i} className="card-hover reveal rounded-2xl p-7 border border-gray-100 bg-white shadow-sm hover:shadow-xl transition-all duration-300"
               style={{ transitionDelay: `${i * 80}ms` }}>
@@ -649,7 +772,9 @@ function Problem() {
     { label: '100% local processing', before: false, after: true },
     { label: 'Natural language file operations', before: false, after: true },
     { label: 'Auto-routing to best model per task', before: false, after: true },
-    { label: 'Document generation & transformation', before: false, after: true },
+    { label: 'Document generation in 4 modes', before: false, after: true },
+    { label: '12+ one-click skills + custom builder', before: false, after: true },
+    { label: 'Web research + deep AI synthesis', before: false, after: true },
     { label: 'Open, auditable architecture', before: false, after: true },
   ];
   return (
@@ -716,9 +841,9 @@ function HowItWorks() {
     },
     {
       n: '2', color: '#059669', bg: '#d1fae5',
-      title: 'Explore all 6 panels',
-      desc: 'Chat with your files, summarize documents, run web research, generate content, connect local data sources, and test MCP tools.',
-      code: 'Chat · Documents · Research\nSkills · Generate · Connectors ✓',
+      title: 'Explore all 7 panels',
+      desc: 'Chat with files, summarize documents, run deep research, use built-in skills, generate content in 4 modes, connect local data sources, and manage MCP servers.',
+      code: 'Chat · Documents · Research\nSkills · Generate · Connectors · MCP ✓',
     },
     {
       n: '3', color: '#ec4899', bg: '#fce7f3',
@@ -1090,7 +1215,7 @@ function FAQ() {
     },
     {
       q: "What AI models does it support?",
-      a: "Any Ollama-compatible model: llama3.2, mistral, phi3, gemma2, qwen2.5, deepseek-r1, and more. For best results we recommend llama3.2:3b for fast file ops and llama3.2:8b for document Q&A. The live demo uses GPT-4o-mini so you can test all features without any local setup.",
+      a: "Any Ollama-compatible model: llama3.2, mistral, phi3, gemma2, qwen2.5, deepseek-r1, and more. For best results we recommend llama3.2:3b for fast file ops and llama3.2:8b for document Q&A. The live demo uses OpenAI so you can test all features without any local setup.",
     },
     {
       q: "What actually happens to my files?",
@@ -1102,7 +1227,7 @@ function FAQ() {
     },
     {
       q: "How is this different from ChatGPT or Copilot?",
-      a: "Cloud AI tools upload your files to their servers. Vault AI runs everything on your hardware and actually executes file operations — it doesn't just answer questions about them. There's no subscription, no data leaving your machine, and it works with any Ollama model you choose.",
+      a: "Cloud AI tools upload your files to their servers. Vault AI runs everything on your hardware and actually executes file operations — it doesn't just answer questions about them. Beyond chat, you get a full research panel, document generator, skills library, local connectors, and MCP hub. No subscription, no data leaving your machine.",
     },
     {
       q: "Do I need a powerful computer?",
