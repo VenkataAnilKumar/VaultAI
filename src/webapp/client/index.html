@@ -28,12 +28,51 @@
     <meta property="og:description" content="Your files. Your AI. Your privacy." />
     <meta property="og:type" content="website" />
 
-    <!-- Fonts -->
+    <!-- Fonts: preconnect only, load async so it never blocks render -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" /></noscript>
+
+    <style>
+      /* Instant loading screen shown before React mounts */
+      #vault-splash {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 16px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        transition: opacity 0.25s ease;
+      }
+      [data-theme="dark"]  #vault-splash { background: #0f0f14; color: #e5e7eb; }
+      [data-theme="light"] #vault-splash { background: #f5f5ff; color: #111827; }
+      #vault-splash .splash-logo {
+        width: 48px; height: 48px; border-radius: 14px;
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 24px;
+      }
+      #vault-splash .splash-name {
+        font-size: 20px; font-weight: 700; letter-spacing: -0.4px;
+      }
+      #vault-splash .splash-spinner {
+        width: 28px; height: 28px;
+        border: 3px solid rgba(79,70,229,0.2);
+        border-top-color: #4f46e5;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      #vault-splash.hidden { opacity: 0; pointer-events: none; }
+    </style>
   </head>
   <body>
+    <!-- Shown instantly before React loads -->
+    <div id="vault-splash">
+      <div class="splash-logo">🔒</div>
+      <div class="splash-name">Vault AI</div>
+      <div class="splash-spinner"></div>
+    </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>

@@ -81,6 +81,7 @@ export default function App() {
   const [showUsage, setShowUsage]         = useState(false);
   const [showWatcher, setShowWatcher]     = useState(false);
   const [showDigest, setShowDigest]       = useState(false);
+  const [appReady, setAppReady]           = useState(false);
 
   // Mobile detection
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -104,25 +105,32 @@ export default function App() {
 
   useEffect(() => {
     async function init() {
+      // Dismiss splash immediately — show UI right away
+      const splash = document.getElementById('vault-splash');
+      if (splash) {
+        splash.classList.add('hidden');
+        setTimeout(() => splash.remove(), 300);
+      }
+      setAppReady(true);
+
+      // Background: resolve working directory + AI status concurrently
       const dirPromise = fetch(`/api/files?path=${encodeURIComponent('/home/runner')}`)
         .then(r => r.ok ? setWorkingDirectory('/home/runner') : fetch(`/api/files?path=${encodeURIComponent('/tmp')}`).then(r2 => r2.ok && setWorkingDirectory('/tmp')))
         .catch(() => {});
 
       try {
-        const status = await checkOllamaStatus();
+        const [status] = await Promise.all([checkOllamaStatus(), dirPromise]);
         setOllamaConnected(status.connected);
         if (status.connected) {
           setActiveProvider(status.provider || null);
-          const [data] = await Promise.all([getModels(), dirPromise]);
+          const data = await getModels();
           setModels(data.models || []);
         } else {
           activateDemoMode();
-          await dirPromise;
         }
       } catch {
         setOllamaConnected(false);
         activateDemoMode();
-        await dirPromise;
       }
     }
     init();
