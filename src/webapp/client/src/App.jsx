@@ -7,14 +7,8 @@ import {
 } from 'lucide-react';
 import FileBrowser from './components/FileBrowser.jsx';
 import Chat from './components/Chat.jsx';
-import ModelPanel from './components/ModelPanel.jsx';
 import StatusBar from './components/StatusBar.jsx';
-import SettingsPanel from './components/SettingsPanel.jsx';
-import SessionHistory from './components/SessionHistory.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
-import UsageDashboard from './components/UsageDashboard.jsx';
-import FileWatcher from './components/FileWatcher.jsx';
-import DigestPanel from './components/DigestPanel.jsx';
 import { useTheme } from './hooks/useTheme.js';
 import { useSessionHistory } from './hooks/useSessionHistory.js';
 import useStore from './store/useStore.js';
@@ -27,6 +21,12 @@ const SkillsPanel        = lazy(() => import('./components/SkillsPanel.jsx'));
 const GeneratePanel      = lazy(() => import('./components/GeneratePanel.jsx'));
 const ConnectorsPanel    = lazy(() => import('./components/connectors/ConnectorsPanel.jsx'));
 const MCPPanel           = lazy(() => import('./components/mcp/MCPPanel.jsx'));
+const ModelPanel         = lazy(() => import('./components/ModelPanel.jsx'));
+const SettingsPanel      = lazy(() => import('./components/SettingsPanel.jsx'));
+const SessionHistory     = lazy(() => import('./components/SessionHistory.jsx'));
+const UsageDashboard     = lazy(() => import('./components/UsageDashboard.jsx'));
+const FileWatcher        = lazy(() => import('./components/FileWatcher.jsx'));
+const DigestPanel        = lazy(() => import('./components/DigestPanel.jsx'));
 
 function PanelSkeleton() {
   return (
@@ -104,26 +104,25 @@ export default function App() {
 
   useEffect(() => {
     async function init() {
+      const dirPromise = fetch(`/api/files?path=${encodeURIComponent('/home/runner')}`)
+        .then(r => r.ok ? setWorkingDirectory('/home/runner') : fetch(`/api/files?path=${encodeURIComponent('/tmp')}`).then(r2 => r2.ok && setWorkingDirectory('/tmp')))
+        .catch(() => {});
+
       try {
         const status = await checkOllamaStatus();
         setOllamaConnected(status.connected);
         if (status.connected) {
           setActiveProvider(status.provider || null);
-          const data = await getModels();
+          const [data] = await Promise.all([getModels(), dirPromise]);
           setModels(data.models || []);
         } else {
           activateDemoMode();
+          await dirPromise;
         }
       } catch {
         setOllamaConnected(false);
         activateDemoMode();
-      }
-
-      for (const dir of ['/home/runner', '/tmp']) {
-        try {
-          const r = await fetch(`/api/files?path=${encodeURIComponent(dir)}`);
-          if (r.ok) { setWorkingDirectory(dir); break; }
-        } catch {}
+        await dirPromise;
       }
     }
     init();

@@ -4,6 +4,13 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   base: process.env.NODE_ENV === 'production' ? '/app/' : '/',
+  optimizeDeps: {
+    include: [
+      'react', 'react-dom', 'react-dom/client',
+      'axios', 'zustand', 'react-markdown',
+      'lucide-react', 'react/jsx-runtime'
+    ]
+  },
   server: {
     host: '0.0.0.0',
     port: 5173,
