@@ -1,347 +1,433 @@
 # Vault AI
 
-Privacy-first, local AI-powered file and document management platform. All AI runs via Ollama on the user's machine — zero data egress. Falls back to OpenAI (Replit integration) when Ollama is unavailable, enabling a full live demo without any local setup.
-
-**Live URL**: served at root `/` (landing) and `/app` (main application)
-
----
-
-## Architecture
-
-| Layer | Technology | Notes |
-|-------|-----------|-------|
-| Frontend | React 18 + Vite + TailwindCSS | Port 5173 in dev, `/app/` in prod |
-| Backend | Node.js + Express | Port 3001, proxied via Vite in dev |
-| AI (local) | Ollama HTTP API | Default `http://localhost:11434` |
-| AI (cloud) | OpenAI (Replit integration) | Fallback when Ollama unavailable |
-| Vector DB | SQLite + better-sqlite3 | Cosine similarity, `~/vault-ai-vectors.db` |
-| Document parsing | pdf-parse, mammoth, xlsx | PDF / DOCX / XLSX / CSV / TXT / code |
-| State | Zustand | Client-side, includes `demoMode` flag |
-| Landing page | Separate Vite app | Port 5000 in dev, `/` in prod |
+Privacy-first, local AI-powered file and document management platform. Runs entirely in your browser against a local Node.js server. No cloud, no subscriptions — Ollama for 100% local AI, OpenAI as a fallback/demo provider.
 
 ---
 
 ## Project Structure
 
 ```
-vault-ai/
+/
 ├── src/
-│   ├── landing/                  # Standalone landing page (Vite + React)
-│   │   ├── src/App.jsx           # Full landing page — hero, features, FAQ, CTA
-│   │   └── vite.config.js        # Port 5000, APP_URL → /app in production
-│   └── webapp/
-│       ├── client/               # React frontend
-│       │   ├── index.html        # PWA meta, service worker registration
-│       │   ├── public/
-│       │   │   ├── manifest.json # PWA manifest
-│       │   │   └── sw.js         # Service worker (cache-first, offline)
-│       │   ├── vite.config.js    # base: /app/ in production, code-splitting
-│       │   └── src/
-│       │       ├── App.jsx       # Nav: Chat | Documents | Research | Skills | Generate | Connectors | MCP
-│       │       ├── components/
-│       │       │   ├── Chat.jsx              # Streaming chat, voice input, demo mode
-│       │       │   ├── FileBrowser.jsx
-│       │       │   ├── ConfirmDialog.jsx      # Destructive action confirmation
-│       │       │   ├── ErrorBoundary.jsx      # Per-panel crash recovery
-│       │       │   ├── GeneratePanel.jsx
-│       │       │   ├── MessageBubble.jsx
-│       │       │   ├── ModelPanel.jsx
-│       │       │   ├── SessionHistory.jsx
-│       │       │   ├── SettingsPanel.jsx
-│       │       │   ├── SkillsPanel.jsx        # 12 built-in + custom skills
-│       │       │   ├── StatusBar.jsx
-│       │       │   ├── agents/               # WorkflowToggle, AgentStep, AgentWorkflowPanel
-│       │       │   ├── connectors/           # ConnectorsPanel, ConnectorCard, ConnectorConfigForm
-│       │       │   ├── document/             # DocumentAgentPanel
-│       │       │   ├── mcp/                  # MCPPanel, MCPServerCard, MCPAddServerForm, MCPToolBadge
-│       │       │   └── research/             # ResearchPanel
-│       │       ├── api/
-│       │       │   ├── client.js             # Axios wrapper + sendChatStream() (fetch/SSE) + demo adapter
-│       │       │   └── demoData.js           # Pre-written demo responses (no Ollama needed)
-│       │       ├── hooks/
-│       │       │   ├── useTheme.js
-│       │       │   └── useSessionHistory.js
-│       │       └── store/
-│       │           └── useStore.js           # Zustand global store
-│       └── server/
-│           ├── index.js          # Express entry; serves /app + / in production
-│           ├── routes/
-│           │   ├── chat.js       # POST /api/chat (non-streaming) + POST /api/chat/stream (SSE)
-│           │   ├── documents.js  # ingest/list/delete/query/multi-query/summarize/extract/classify/pii/organize
-│           │   ├── files.js
-│           │   ├── models.js
-│           │   ├── search.js
-│           │   ├── generate.js
-│           │   ├── agents.js
-│           │   ├── connectors.js
-│           │   ├── mcp.js
-│           │   ├── research.js   # Web search, deep research, URL summarizer
-│           │   └── skills.js     # Custom skills CRUD → ~/.vault-ai-skills.json
-│           ├── services/
-│           │   ├── ollama.js         # OllamaClient (chat + chatStream) + ModelRouter
-│           │   ├── openaiClient.js   # OpenAIClient (chat + chatStream) + OpenAIModelRouter
-│           │   ├── fileOps.js        # Async file operations
-│           │   ├── docReader.js      # Multi-format parser + chunker
-│           │   ├── embeddings.js     # HyDE + semantic search + directory indexer
-│           │   ├── vectorStore.js    # SQLite cosine similarity store
-│           │   ├── localEmbeddings.js
-│           │   ├── genAI.js
-│           │   └── webSearch.js      # DuckDuckGo (instant + HTML, 5-min cache)
-│           ├── agents/               # orchestrator, registry, runner, memory
-│           ├── connectors/           # obsidian, sqlite, git, email, bookmarks
-│           ├── mcp/                  # MCP server + client
-│           └── tools/
-│               └── fileTools.js      # FILE_TOOLS definitions + DESTRUCTIVE_TOOLS list
+│   ├── webapp/                    # Main application (port 5173 client, 3001 server)
+│   │   ├── client/                # React 18 + Vite frontend
+│   │   │   └── src/
+│   │   │       ├── App.jsx                    # Root layout, sidebar, nav, session management
+│   │   │       ├── main.jsx                   # React entry point
+│   │   │       ├── index.css                  # All styles (~3100+ lines, structured in tiers)
+│   │   │       ├── components/
+│   │   │       │   ├── Chat.jsx               # Main chat panel, streaming, voice, drag-drop, export
+│   │   │       │   ├── FileBrowser.jsx        # File/folder explorer with AI chat integration
+│   │   │       │   ├── ModelPanel.jsx         # Ollama model manager (pull, delete, switch)
+│   │   │       │   ├── StatusBar.jsx          # Bottom bar: provider, model, directory, tokens
+│   │   │       │   ├── SettingsPanel.jsx      # Theme, font, model, working directory settings
+│   │   │       │   ├── SessionHistory.jsx     # Saved chat threads (grouped Today/Yesterday/Older)
+│   │   │       │   ├── ErrorBoundary.jsx      # React error boundary wrapper
+│   │   │       │   ├── ConfirmDialog.jsx      # Destructive-action confirm modal
+│   │   │       │   ├── ToastContainer.jsx     # Toast notification overlay
+│   │   │       │   ├── UsageDashboard.jsx     # 7-day bar chart + stats tiles (localStorage)
+│   │   │       │   ├── FileWatcher.jsx        # Real-time folder watcher (polls /api/watch)
+│   │   │       │   ├── DigestPanel.jsx        # Scheduled AI summaries (History + Schedule tabs)
+│   │   │       │   ├── MessageBubble.jsx      # Individual chat message renderer (markdown + tools)
+│   │   │       │   ├── document/
+│   │   │       │   │   └── DocumentAgentPanel.jsx  # Ingest, summarize, extract, PII detect, classify
+│   │   │       │   ├── research/
+│   │   │       │   │   └── ResearchPanel.jsx       # AI-powered web research with source tracking
+│   │   │       │   ├── connectors/
+│   │   │       │   │   ├── ConnectorsPanel.jsx     # Connector grid + connect/disconnect flow
+│   │   │       │   │   ├── ConnectorCard.jsx       # Individual connector card
+│   │   │       │   │   └── ConnectorConfigForm.jsx # Config modal (handles text/password/select/number/boolean + help text)
+│   │   │       │   ├── agents/
+│   │   │       │   │   ├── AgentWorkflowPanel.jsx  # Multi-agent workflow visualiser
+│   │   │       │   │   ├── AgentStep.jsx           # Step card in workflow
+│   │   │       │   │   └── WorkflowToggle.jsx      # Simple ↔ Multi-agent mode switch
+│   │   │       │   ├── mcp/
+│   │   │       │   │   ├── MCPPanel.jsx            # MCP server manager
+│   │   │       │   │   ├── MCPServerCard.jsx       # Individual MCP server card
+│   │   │       │   │   ├── MCPAddServerForm.jsx    # Add new MCP server form
+│   │   │       │   │   └── MCPToolBadge.jsx        # Inline tool-use indicator in messages
+│   │   │       │   └── SkillsPanel.jsx             # AI skill library browser
+│   │   │       ├── hooks/
+│   │   │       │   ├── useStore.js            # Zustand global state
+│   │   │       │   ├── useTheme.js            # Dark/light/system theme toggle
+│   │   │       │   ├── useSessionHistory.js   # localStorage session save/load/delete
+│   │   │       │   ├── useStats.js            # Usage tracking (messages, files, tools, exports)
+│   │   │       │   ├── useToast.js            # Toast hook (success/info/warn/error)
+│   │   │       │   └── useTTS.js              # Text-to-speech for AI responses
+│   │   │       ├── api/
+│   │   │       │   └── client.js              # Axios API client + SSE streaming helper
+│   │   │       └── store/
+│   │   │           └── useStore.js            # Re-export of Zustand store
+│   │   │
+│   │   └── server/                # Node.js + Express API (port 3001)
+│   │       ├── index.js           # Server entry: routes, compression, CORS, production static
+│   │       ├── routes/
+│   │       │   ├── chat.js        # /api/chat — streaming SSE + multi-agent orchestration
+│   │       │   ├── files.js       # /api/files — list, read, write, delete, mkdir
+│   │       │   ├── models.js      # /api/models — list Ollama/OpenAI models, health check
+│   │       │   ├── search.js      # /api/search — vector + keyword hybrid search
+│   │       │   ├── generate.js    # /api/generate — document generation from templates
+│   │       │   ├── documents.js   # /api/documents — ingest, summarize, extract, PII, classify
+│   │       │   ├── agents.js      # /api/agents — multi-agent workflow runner
+│   │       │   ├── connectors.js  # /api/connectors — connect, disconnect, list, tool execution
+│   │       │   ├── mcp.js         # /api/mcp — MCP server start/stop/tool call
+│   │       │   ├── research.js    # /api/research — web search + AI synthesis
+│   │       │   ├── skills.js      # /api/skills — skill library CRUD
+│   │       │   ├── watch.js       # /api/watch — real-time file system watcher
+│   │       │   └── digest.js      # /api/digest — scheduled AI summaries (SQLite-backed, 5-min scheduler)
+│   │       ├── services/
+│   │       │   ├── ollama.js      # OllamaClient + ModelRouter (Ollama→OpenAI fallback)
+│   │       │   └── vectorStore.js # In-memory vector store (embeddings + cosine similarity)
+│   │       └── connectors/
+│   │           ├── base.js            # BaseConnector abstract class
+│   │           ├── registry.js        # ConnectorRegistry — register, connect, dispatch tools
+│   │           ├── obsidian.js        # Obsidian vault connector (markdown files)
+│   │           ├── sqlite.js          # SQLite database connector (query, list tables)
+│   │           ├── git.js             # Git repository connector (log, commit, diff)
+│   │           ├── email.js           # Local email archive connector (mbox/maildir)
+│   │           ├── bookmarks.js       # Chrome/Firefox bookmarks connector
+│   │           ├── notion.js          # Notion API connector (pages, databases, search)
+│   │           ├── github.js          # GitHub REST API connector (issues, PRs, README)
+│   │           └── browserhistory.js  # Browser history connector (Chrome/Brave/Edge/Firefox)
+│   │
+│   └── landing/                   # Marketing landing page (port 5000)
+│       └── src/
+│           └── App.jsx            # Single-file landing page (announcement bar, hero, features, FAQ)
+│
+└── replit.md                      # This file
 ```
 
 ---
 
-## Deployment (Production)
+## Tech Stack
 
-```
-Build:  cd src/webapp && npm install && npm run build
-        cd src/landing && npm install && npm run build
-
-Run:    cd src/webapp && NODE_ENV=production npm run start
-```
-
-**Routing in production (`server/index.js`):**
-- `/app/*` → serves `client/dist` (React SPA with base `/app/`)
-- `/api/*` → Express API routes
-- `/*` → serves `src/landing/dist` (landing page)
-
-**Vite base path:** `client/vite.config.js` sets `base: '/app/'` when `NODE_ENV=production`, so all built assets reference `/app/assets/...`.
-
----
-
-## Streaming Chat (SSE)
-
-### Server-side (`POST /api/chat/stream`)
-- Sends `Content-Type: text/event-stream` with `X-Accel-Buffering: no`
-- Calls `ollama.chatStream()` / `openaiClient.chatStream()` — both stream tokens via an `onToken` callback
-- SSE event protocol:
-
-| Event | Payload | Meaning |
-|-------|---------|---------|
-| `token` | `{ type, content }` | Partial text chunk |
-| `tool` | `{ type, name, status: "running"\|"done" }` | Tool executing |
-| `done` | `{ type, toolsUsed[], model }` | Stream complete |
-| `confirmation` | `{ type, pendingAction, message }` | Destructive action blocked — needs user confirmation |
-| `error` | `{ type, message }` | Fatal error |
-
-- If first AI response has `tool_calls`: sends `tool:running` events, executes tools in parallel, sends `tool:done` events, then streams the follow-up response
-- Destructive tools (`delete_file`, bulk operations > 3 files) emit `confirmation` event instead of executing
-- Multi-agent `workflowMode` falls back to non-streaming `POST /api/chat`
-
-### Client-side (`client.js` + `Chat.jsx`)
-- `sendChatStream(data, { onToken, onTool, onDone, onError })` — uses native `fetch` + `ReadableStream` (not axios, which buffers)
-- In demo mode: simulates word-by-word streaming from pre-written demo responses
-- Returns an abort function — hooked into component unmount and "Stop" button
-- `Chat.jsx` renders a live `<StreamingBubble>` that grows as tokens arrive, with animated tool chips and a blinking cursor
-- On `done`: calls `addMessage()` with the complete accumulated content, clears streaming state
+| Layer | Technology |
+|-------|-----------|
+| Frontend framework | React 18 with hooks |
+| Frontend build | Vite 5 (HMR, code-split lazy panels) |
+| Styling | Plain CSS with CSS variables (no Tailwind in webapp) |
+| State management | Zustand |
+| AI (local) | Ollama (llama3.2, nomic-embed-text, etc.) |
+| AI (cloud fallback) | OpenAI GPT-4o via Replit integration |
+| Backend | Node.js 18 + Express |
+| Database | better-sqlite3 (digest schedules) |
+| Vector store | In-memory cosine similarity (vectorStore.js) |
+| Landing page | React 18 + Vite + Tailwind CSS |
+| Icons | lucide-react |
+| Markdown | react-markdown |
+| HTTP client | Axios |
+| Streaming | Server-Sent Events (SSE) via `sendChatStream` |
 
 ---
 
-## API Routes
+## Workflows
 
-| Route | Description |
-|-------|-------------|
-| `POST /api/chat` | Chat (non-streaming; used for multi-agent workflow mode) |
-| `POST /api/chat/stream` | Chat with SSE token streaming |
-| `POST /api/chat/confirm` | Execute a confirmed destructive action |
-| `GET /api/models` | List available Ollama/OpenAI models |
-| `GET /api/models/status` | Connection status |
-| `GET/POST /api/files` | File browser + read |
-| `GET /api/search` | Semantic vector search |
-| `POST /api/generate/*` | Document generation |
-| `POST /api/documents/ingest` | Parse + embed single file |
-| `GET /api/documents` | List indexed documents |
-| `DELETE /api/documents` | Remove from index |
-| `POST /api/documents/query` | RAG Q&A (HyDE) |
-| `POST /api/documents/multi-query` | Cross-document Q&A with citation |
-| `POST /api/documents/summarize` | TL;DR / Key Points / Full brief |
-| `POST /api/documents/extract` | Structured data extraction |
-| `POST /api/documents/classify` | Auto-classify + tag + sensitivity |
-| `POST /api/documents/pii` | PII detection (regex + LLM) |
-| `POST /api/documents/organize` | AI folder organization suggestions |
-| `POST /api/documents/index-directory` | Batch index entire directory |
-| `GET /api/research/search` | DuckDuckGo web search |
-| `POST /api/research/deep` | Multi-step deep research + AI report |
-| `POST /api/research/summarize-url` | Fetch + summarize a webpage |
-| `GET/POST /api/skills` | Custom skills CRUD |
-| `DELETE /api/skills/:id` | Delete custom skill |
-| `GET/POST /api/connectors/*` | Connector management |
-| `GET/POST /api/mcp/*` | MCP server/client management |
+| Name | Command | Port | Purpose |
+|------|---------|------|---------|
+| Start Vault AI | `cd src/webapp && npm run dev` | 5173 (client), 3001 (server) | Main app — runs both Vite dev server and Express concurrently |
+| Vault AI Landing | `cd src/landing && npm run dev` | 5000 | Marketing landing page |
+| Install Only | `cd src/webapp && npm install` | — | Dependency install only |
 
 ---
 
-## Key Features
+## API Endpoints
+
+All endpoints are served by Express on port 3001. The Vite dev server on 5173 proxies `/api/*` to 3001.
+
+### Core
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Server health check |
+| `/api/models` | GET | List models + provider status (Ollama or OpenAI) |
 
 ### Chat
-- Real-time token streaming (SSE) — AI types in as it generates
-- Tool execution mid-stream with animated status badges
-- Stop button cancels in-flight stream
-- Voice input (Web Speech API) — microphone button, real-time transcript
-- Workflow toggle: Simple (streaming) vs Multi-Agent (orchestrator)
-- Demo mode: simulates all responses without Ollama
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/chat` | POST | Non-streaming chat (multi-agent mode) |
+| `/api/chat/stream` | POST | SSE streaming chat with tool calls |
 
-### Document Agent
-- **RAG Q&A**: HyDE (Hypothetical Document Embedding) for improved retrieval accuracy
-- **Multi-doc Q&A**: Ask across all indexed documents with per-document citations
-- **Summarize**: TL;DR / Key Points / Full Executive Brief
-- **Extract**: Structured pull of dates, names, amounts, decisions, obligations
-- **Classify**: Auto-tag + sensitivity rating (public / internal / confidential / restricted)
-- **PII Detection**: Regex (email, phone, SSN, CC, IP) + LLM (names, addresses, medical)
-- **Smart Organize**: AI suggests folder structure for document library
+### Files
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/files/list` | GET | List directory contents |
+| `/api/files/read` | GET | Read file content |
+| `/api/files/write` | POST | Write file |
+| `/api/files/delete` | DELETE | Delete file or directory |
+| `/api/files/mkdir` | POST | Create directory |
 
-### Research Panel
-- **Quick Search**: DuckDuckGo — private, no API key, instant answers + organic results
-- **Deep Research**: Breaks question → parallel sub-searches → AI synthesizes report
-- 5-minute in-memory cache for search results, 8s timeout per query
-- **URL Summarizer**: Fetch any page and summarize with AI
-- Export reports as Markdown
+### Documents
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/documents/ingest` | POST | Ingest file into vector store |
+| `/api/documents/query` | POST | Semantic query against ingested docs |
+| `/api/documents/summarize` | POST | AI summary of a document |
+| `/api/documents/extract` | POST | Extract structured data (JSON) from document |
+| `/api/documents/pii` | POST | Detect PII (names, emails, SSNs, cards) |
+| `/api/documents/classify` | POST | Classify document type/topic |
+| `/api/documents/index-dir` | POST | Batch ingest all files in a directory |
 
-### Custom Skills
-- 12 built-in skills: Summarize, Extract, Draft Reply, Find Duplicates, Report, Explain, Tag, Privacy Audit, Translate, Meeting Notes, Organize Files, Find Patterns
-- Custom skill builder: name, icon, system prompt — fully persistent (`~/.vault-ai-skills.json`)
+### Search
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/search` | POST | Hybrid vector + keyword search over ingested docs |
 
-### Local Connectors
-- **Obsidian**: Read vault notes, query by tag/folder
-- **SQLite**: Query any local SQLite database
-- **Git**: Repo status, log, diff
-- **Email**: Parse local `.mbox` / `Maildir`
-- **Bookmarks**: Read browser bookmark exports
+### Connectors
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/connectors` | GET | List all 8 connectors + schema |
+| `/api/connectors/:name/connect` | POST | Connect a connector with config |
+| `/api/connectors/:name/disconnect` | POST | Disconnect a connector |
+| `/api/connectors/:name/tools` | GET | List tools exposed by a connected connector |
 
-### MCP (Model Context Protocol)
-- Add any external MCP server by URL
-- Discovered tools appear in chat tool belt automatically
+### File Watcher
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/watch/status` | GET | List actively watched directories |
+| `/api/watch/start` | POST | Start watching a directory |
+| `/api/watch/stop` | POST | Stop watching a directory |
+| `/api/watch/events` | GET | Poll recent file events for a watched dir |
 
-### PWA
-- Installable as desktop/mobile app (manifest.json + service worker)
-- Cache-first offline support for app shell
+### Scheduled Digests
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/digest/history` | GET | List all past digest summaries |
+| `/api/digest/run` | POST | Manually trigger a digest for a directory |
+| `/api/digest/schedule` | GET | Get current schedule config |
+| `/api/digest/schedule` | PUT | Update schedule (dirs, interval_hours, enabled) |
+| `/api/digest/:id` | DELETE | Delete a digest history entry |
 
----
-
-## AI Model Routing
-
-`ModelRouter` (in `ollama.js`) classifies the task and picks the optimal model:
-
-| Task type | Preferred Ollama models | Cloud fallback |
-|-----------|------------------------|----------------|
-| `file_op` | llama3.2:3b, phi3:mini | gpt-5-mini |
-| `doc_qa` | mistral:7b, llama3.1:8b | gpt-5-mini |
-| `generate` | llama3.1:8b, mistral:7b | gpt-5.4 |
-| `transform` | mistral:7b | gpt-5-mini |
-| `synthesize` | llama3.1:8b | gpt-5.4 |
-| `extract` | mistral:7b | gpt-5-mini |
-| `vision` | llava:7b | gpt-5.4 |
-| `code` | qwen2.5-coder:7b, codellama | gpt-5.4 |
-| `embedding` | nomic-embed-text | text-embedding-3-small |
-
----
-
-## Performance
-
-| Optimization | Detail |
-|---|---|
-| Code splitting | Initial JS bundle: **44KB** (was 455KB) — 90% reduction via `manualChunks` |
-| React.lazy | All 6 heavy panels lazy-loaded with `<PanelSkeleton>` fallback |
-| Gzip | `compression` middleware at level 6 on all API responses |
-| Parallel tool calls | All `tool_calls` in a single turn executed via `Promise.all` |
-| Async file ops | `fileOps.js` fully async — no event-loop blocking on large directories |
-| Search cache | 5-min in-memory cache for web search results |
-| Search timeout | 8s per query (was 12s) |
-| renderPanel memoized | `useMemo([activeTab])` prevents JSX recreation on every parent render |
+### Generate / Research / Skills / Agents / MCP
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/generate` | POST | Generate documents from prompt/template |
+| `/api/research` | POST | AI-powered web research + synthesis |
+| `/api/skills` | GET/POST/DELETE | Skill library CRUD |
+| `/api/agents/run` | POST | Run multi-agent workflow |
+| `/api/mcp/servers` | GET/POST | List/add MCP servers |
+| `/api/mcp/call` | POST | Call an MCP tool |
 
 ---
 
-## Environment Variables
+## Connectors (8 total)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API endpoint |
-| `AI_INTEGRATIONS_OPENAI_API_KEY` | Replit integration | OpenAI fallback |
-| `AI_INTEGRATIONS_OPENAI_BASE_URL` | Replit integration | OpenAI base URL |
-| `PORT` | `3001` | Express server port |
-| `NODE_ENV` | — | Set to `production` in deployment run command |
+All connectors extend `BaseConnector` and are registered in `registry.js`. Once connected, they expose AI tools automatically added to the chat's tool list.
 
----
+| Connector | Name | Tools | Config |
+|-----------|------|-------|--------|
+| Obsidian | `obsidian` | `obsidian_list`, `obsidian_read`, `obsidian_search`, `obsidian_write` | `vaultPath` |
+| SQLite | `sqlite` | `sqlite_list_tables`, `sqlite_query`, `sqlite_read_table` | `dbPath`, `allowWrite` |
+| Git | `git` | `git_log`, `git_read_commit`, `git_recent` | `repoPath` |
+| Email | `email` | `email_list`, `email_read`, `email_search` | `archivePath`, `format` |
+| Bookmarks | `bookmarks` | `bookmarks_list`, `bookmarks_search` | `browser`, `profilePath` |
+| Notion | `notion` | `notion_list`, `notion_read`, `notion_search` | `apiKey` (password), `rootPageId` |
+| GitHub | `github` | `github_list`, `github_read`, `github_search`, `github_readme` | `token` (password), `repo` |
+| Browser History | `browserhistory` | `browserhistory_list`, `browserhistory_search`, `browserhistory_top` | `browser` (select), `historyPath`, `limit` (number) |
 
-## Security
-
-- Path traversal prevention on all file operations
-- No hard deletes — files moved to OS trash via `trash` package
-- Destructive actions require explicit confirmation dialog (SSE `confirmation` event)
-- All AI computation local — zero data egress in Ollama mode
-- MCP API keys never logged or returned in API responses
-- PII scanner helps users identify sensitive data before sharing documents
+The `ConnectorConfigForm` supports field types: `text`, `password` (masked), `select` (dropdown), `number`, `boolean` (checkbox). It also renders `help` text below each field.
 
 ---
 
-## Running Locally
+## Key Hooks
 
-```bash
-# 1. Start Ollama
-ollama serve
-ollama pull llama3.2          # Chat, agents, summarize, classify, extract
-ollama pull nomic-embed-text  # Semantic search, document Q&A
+| Hook | File | Purpose |
+|------|------|---------|
+| `useStore` | `store/useStore.js` | Global Zustand store (messages, models, provider, activeTab, demoMode, etc.) |
+| `useTheme` | `hooks/useTheme.js` | `light` / `dark` / `system` theme with `data-theme` on `<html>` |
+| `useSessionHistory` | `hooks/useSessionHistory.js` | Save/load/delete chat sessions from localStorage |
+| `useStats` | `hooks/useStats.js` | Track `message_sent`, `file_attached`, `tool_run`, `export`, `session_start` per day in localStorage |
+| `useToast` | `hooks/useToast.js` | `success()`, `info()`, `warn()`, `error()` toast notifications |
+| `useTTS` | `hooks/useTTS.js` | Web Speech API text-to-speech for AI messages |
 
-# 2. Start the app
-cd src/webapp && npm install && npm run dev
-# → Express on :3001, Vite on :5173
+---
 
-# 3. (Optional) Landing page
-cd src/landing && npm install && npm run dev
-# → Landing on :5000
+## AI Provider Flow
+
+```
+User sends message
+       │
+       ▼
+ModelRouter.route()
+       │
+       ├─── Ollama available? ──► Use Ollama (local, private)
+       │
+       └─── Ollama unavailable? ──► Use OpenAI (cloud, via Replit integration)
 ```
 
----
+The `ModelRouter` in `services/ollama.js` handles automatic fallback. The privacy badge in the chat toolbar shows `🔒 Local · Private` (Ollama) or `☁ Cloud · OpenAI` depending on which provider is active.
 
-## Roadmap Status
-
-### ✅ Tier 1 — Complete
-| # | Feature | Implementation |
-|---|---------|---------------|
-| 1 | **Drag-and-drop files into chat** | FileReader client-side for text/code files; chip UI in input bar; binary files redirect to Documents panel; paperclip button fallback |
-| 2 | **Local vs. cloud privacy indicator** | `activeProvider` in store; `PrivacyBadge` component in chat toolbar; green "Local" (Ollama) or yellow "Cloud" (OpenAI) |
-| 3 | **Mobile-responsive layout** | Sidebar drawer overlay on `< 768px`; bottom nav (Chat/Docs/Research/Skills/More); hamburger in header; safe-area padding |
-
-### ✅ Tier 2 — Complete
-| # | Feature | Implementation |
-|---|---------|---------------|
-| 4 | **Smoother Ollama onboarding** | OS-detected tabs (Mac/Windows/Linux) in Settings; one-click copy install commands; live Recheck button with spinner |
-| 5 | **Settings page** | Full `SettingsPanel`: model select dropdown, working directory input, OpenAI API key (localStorage), theme toggle, shortcuts |
-| 6 | **Export chat** | Export dropdown in toolbar; Markdown download (`.md`) + Print/PDF (opens styled HTML in new tab) |
-
-### ✅ Tier 3 — Complete
-| # | Feature | Implementation |
-|---|---------|---------------|
-| 7 | **File watcher** | `GET/POST /api/watch` routes (fs.watch, event queue, 8s poll); `FileWatcher.jsx` widget in sidebar footer |
-| 8 | **Voice output (TTS)** | `useTTS` hook using Web Speech API; "🔊 Read" button on every AI bubble; pulsing stop indicator |
-| 10 | **Usage dashboard** | `useStats` hook (localStorage); `UsageDashboard.jsx` with today/all-time tiles + 7-day bar chart |
-
-### ✅ Tier 4 — Complete (Polish + Scheduled Summaries)
-| # | Feature | Implementation |
-|---|---------|---------------|
-| P1 | **Animated skeleton loaders** | `PanelSkeleton` → shimmer-animated `skel-block` CSS, replaces plain "Loading…" text |
-| P2 | **Toast notifications** | `useToast` (Zustand) + `ToastContainer.jsx`; fire on file attach, binary file warn, MD/PDF export confirm |
-| P3 | **⌘E export shortcut** | `vault:export-chat` custom event dispatched from `App.jsx`, listened in `Chat.jsx` |
-| P4 | **Mobile toolbar fixes** | `@media ≤600px` rules: toolbar no-wrap/scroll, compact button sizes, export dropdown positioning |
-| 11 | **Scheduled summaries** | `server/routes/digest.js` — SQLite-backed, scans dirs for changed files, AI summary, 5-min scheduler loop; `DigestPanel.jsx` with History/Schedule tabs, Run-now strip, collapsible digest cards, interval config, per-dir management |
-
-### ✅ Tier 5 — Complete (More Connectors)
-| # | Feature | Implementation |
-|---|---------|---------------|
-| 9a | **Notion connector** | `connectors/notion.js` — Notion API v1; `connect()` validates integration token; `list()` recent pages, `read(id)` full page blocks, `search(q)` workspace search; Tools: `notion_list`, `notion_read`, `notion_search` |
-| 9b | **GitHub Issues connector** | `connectors/github.js` — GitHub REST API v2022-11-28; `connect()` validates PAT + repo; `list()` open issues/PRs, `read(n)` issue + comments, `search(q)` issues API; Tools: `github_list`, `github_read`, `github_search`, `github_readme` |
-| 9c | **Browser History connector** | `connectors/browserhistory.js` — reads Chrome/Brave/Edge/Firefox SQLite files via temp-copy (safe while browser is open); auto-detects browser; `list()` recent 50, `search(q)` by URL/title, `getTopSites(n)`; Tools: `browserhistory_list`, `browserhistory_search`, `browserhistory_top` |
-
-### ✅ All 11 roadmap items complete
+In **Demo Mode** (triggered from landing page or via `activateDemoMode()`):
+- Sets `demoMode=true`, `activeProvider='openai'`
+- Unlocks the full UI without requiring Ollama setup
+- All AI calls route through OpenAI (real responses, not simulated)
+- Footer shows: *"Demo mode · Live AI via OpenAI · Install Ollama for local-only AI"*
 
 ---
 
-## Dependencies
+## Streaming Architecture
 
-**Server**: express, cors, compression, better-sqlite3, pdf-parse, mammoth, xlsx, fs-extra, trash, axios, md5, simple-git, js-yaml, mailparser, html-to-text, @modelcontextprotocol/sdk, openai
+Chat messages stream via SSE:
 
-**Client**: react, react-dom, zustand, axios, lucide-react, react-markdown, tailwindcss
+1. Client calls `sendChatStream()` in `api/client.js` — opens a `fetch()` with `Content-Type: text/event-stream`
+2. Server in `routes/chat.js` writes `data: {"type":"token","content":"..."}` chunks
+3. Tool calls emit `data: {"type":"tool","name":"...","status":"running|done"}`
+4. Final `data: {"type":"done","model":"...","toolsUsed":[...]}` closes the stream
+5. Client accumulates tokens into `streamContent` state, renders live in the chat UI
+
+---
+
+## State Management
+
+Zustand store (`useStore`) holds all global state:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `messages` | `Message[]` | Current chat thread |
+| `workingDirectory` | `string` | Active file system path |
+| `activeProvider` | `'ollama' \| 'openai' \| null` | Current AI provider |
+| `availableModels` | `Model[]` | Models from Ollama or OpenAI |
+| `selectedModel` | `string` | User-chosen model |
+| `ollamaConnected` | `boolean` | Whether Ollama is reachable |
+| `isLoading` | `boolean` | Non-streaming request in flight |
+| `pendingAction` | `object \| null` | Action awaiting user confirmation |
+| `workflowMode` | `'simple' \| 'multi-agent'` | Chat mode |
+| `activeTab` | `string` | Current sidebar panel |
+| `demoMode` | `boolean` | Demo mode active |
+| `externalMCPTools` | `Tool[]` | Tools from connected MCP servers |
+
+---
+
+## Usage Dashboard
+
+Stats are stored in `localStorage` under `vault_ai_stats` as a date-keyed object:
+
+```json
+{
+  "2026-05-03": {
+    "messages": 12,
+    "filesAttached": 3,
+    "toolsRun": 7,
+    "exports": 1,
+    "sessions": 2
+  }
+}
+```
+
+**Tracked events** (all wired in `Chat.jsx` → `useStats.track()`):
+- `message_sent` — every user message sent
+- `file_attached` — drag-drop or file picker attachment
+- `tool_run` — when AI uses one or more tools (count tracked)
+- `export` — Markdown download or HTML print export
+
+The `UsageDashboard` component shows: today/all-time stat tiles + 7-day bar chart.
+
+---
+
+## Scheduled Digests
+
+Stored in SQLite at `src/webapp/data/digest.db`. Two tables:
+
+- **`digests`** — history of past summaries (dir, summary, file_count, changed_files, model, created)
+- **`schedule`** — singleton row (id=1) with dirs, interval_hours, enabled, last_run, next_run
+
+A Node.js `setInterval` runs every 5 minutes on the server and fires the digest generator when `next_run` is due. The generator:
+1. Scans the directory for files modified in the last `interval_hours`
+2. Reads up to 800 chars of each changed file
+3. Calls the AI to produce a summary
+4. Saves to `digests` table
+
+---
+
+## File Watcher
+
+Polls `chokidar` on the server every 8 seconds from the client. Events (add/change/delete) are stored in a server-side ring buffer per watched directory and returned on `/api/watch/events`.
+
+---
+
+## Landing Page
+
+Single-file React app (`src/landing/src/App.jsx`) served on port 5000.
+
+Sections: announcement bar → hero → features grid → how it works → privacy section → FAQ → CTA footer.
+
+**APP_URL detection** (critical for "Try Demo" links):
+```js
+const APP_URL = (() => {
+  const { hostname, port, protocol } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return `${protocol}//localhost:5173`;
+  if (port && port !== '80' && port !== '443') return `${protocol}//${hostname}:5173`; // Replit dev
+  return '/app'; // Production
+})();
+```
+
+In production, the Express server serves the landing build at `/` and the client build at `/app`.
+
+---
+
+## Production Build
+
+```bash
+# Build client
+cd src/webapp/client && npm run build
+
+# Build landing
+cd src/landing && npm run build
+
+# Start production server (serves both from Express)
+cd src/webapp && npm start
+```
+
+Express in `NODE_ENV=production` serves:
+- `/app` → `src/webapp/client/dist/index.html` (SPA)
+- `/` → `src/landing/dist/index.html` (SPA)
+- All `/api/*` routes handled by Express directly
+
+---
+
+## Environment Variables / Integrations
+
+| Variable | Source | Usage |
+|----------|--------|-------|
+| `OPENAI_API_KEY` | Replit OpenAI integration (`javascript_openai_ai_integrations`) | OpenAI API calls in `services/ollama.js` (ModelRouter fallback) |
+| `PORT` | Replit env | Express server port (default: 3001) |
+| `NODE_ENV` | Replit env | `production` enables static file serving from Express |
+
+The OpenAI integration is already installed (`javascript_openai_ai_integrations==2.0.0`). No manual key setup needed.
+
+---
+
+## CSS Architecture
+
+All styles live in `src/webapp/client/src/index.css` (~3100+ lines). Structured in tiers:
+
+| Lines (approx) | Content |
+|----------------|---------|
+| 1–200 | CSS variables (light/dark theme, spacing, colors) |
+| 200–800 | Base layout, sidebar, nav, chat area |
+| 800–1400 | File browser, model panel, status bar |
+| 1400–2038 | Tier 1: mobile layout, privacy badge, drag-drop, settings |
+| 2038–2266 | Tier 2: connectors, MCP, agents, skills, research |
+| 2266–2496 | Tier 3: voice, TTS, export, onboarding |
+| 2496–2800 | Tier 4: skeleton loaders, toasts, mobile toolbar, digest |
+| 2800–3100+ | Tier 5/misc: usage dashboard, session history polish |
+
+---
+
+## Known Limitations / Future Work
+
+- **Vector store is in-memory** — restarting the server loses all ingested document embeddings. Persisting to SQLite or a file is a natural next step.
+- **File watcher ring buffer is in-memory** — events are lost on server restart.
+- **Browser History connector** requires that the browser is not currently open (history DB is locked while the browser runs). A temp-copy approach is already implemented to mitigate this.
+- **Digest scheduler** is process-local (no persistence of schedule across restarts beyond the SQLite config row).
+
+---
+
+## Completed Feature Tiers
+
+| Tier | Features |
+|------|---------|
+| 1 | Drag-drop file attachment, privacy badge, mobile layout, settings panel |
+| 2 | Ollama onboarding, connectors panel (5 connectors), MCP tools, research panel |
+| 3 | Chat export (Markdown + HTML print), voice input (Web Speech API), TTS playback, file watcher, usage dashboard |
+| 4 | Animated skeleton loaders, toast system, ⌘E export shortcut, mobile toolbar scroll fix, scheduled summaries (digest) |
+| 5 | Notion connector, GitHub connector, Browser History connector (total: 8 connectors) |
+| Bug fixes | Demo link APP_URL detection for Replit dev; useMemo removed; useStats wired to Chat; ConnectorConfigForm password/select/number/help fields; demo footer text corrected |

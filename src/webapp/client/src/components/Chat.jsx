@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   SendIcon, AlertCircleIcon, RefreshCwIcon, MicIcon, MicOffIcon,
   PlayIcon, ZapIcon, WrenchIcon, XIcon, PaperclipIcon, FileTextIcon,
@@ -12,6 +12,7 @@ import WorkflowToggle from './agents/WorkflowToggle.jsx';
 import AgentWorkflowPanel from './agents/AgentWorkflowPanel.jsx';
 import MCPToolBadge from './mcp/MCPToolBadge.jsx';
 import { useToast } from '../hooks/useToast.js';
+import { useStats } from '../hooks/useStats.js';
 
 // ── Text file extensions handled client-side ────────────────────
 const TEXT_EXTS = new Set([
@@ -237,6 +238,9 @@ export default function Chat() {
   // Toast
   const { success, info, warn } = useToast();
 
+  // Usage stats tracking
+  const { track } = useStats();
+
   // Drag-and-drop state
   const [isDragging, setIsDragging]       = useState(false);
   const [attachedFile, setAttachedFile]   = useState(null);
@@ -302,11 +306,13 @@ export default function Chat() {
       const reader = new FileReader();
       reader.onload = (ev) => {
         setAttachedFile({ name: file.name, content: ev.target.result, size: file.size, isText: true });
+        track('file_attached');
         success(`Attached ${file.name}`);
       };
       reader.readAsText(file);
     } else {
       setAttachedFile({ name: file.name, content: null, size: file.size, isText: false });
+      track('file_attached');
       warn(`${file.name} — binary file. Open it in Documents for full analysis.`);
     }
   }
@@ -355,6 +361,7 @@ export default function Chat() {
     if (inputRef.current) inputRef.current.style.height = '40px';
 
     addMessage({ role: 'user', content: userMessage });
+    track('message_sent');
     const history = messages.map(m => ({ role: m.role, content: m.content }));
 
     // Multi-agent: non-streaming
@@ -400,6 +407,7 @@ export default function Chat() {
             finalToolsUsed = event.toolsUsed || finalToolsUsed;
             finalModel     = event.model || finalModel;
             if (finalModel) setActiveProvider(finalModel.startsWith('gpt') ? 'openai' : 'ollama');
+            if (finalToolsUsed.length > 0) track('tool_run', { count: finalToolsUsed.length });
             addMessage({ role: 'assistant', content: accumulated || 'No response', model: finalModel, toolsUsed: finalToolsUsed.length > 0 ? finalToolsUsed : undefined });
           }
           setStreamContent(''); setStreamTools([]); setIsStreaming(false); abortStreamRef.current = null;
@@ -446,6 +454,7 @@ export default function Chat() {
     a.download = `vault-chat-${Date.now()}.md`;
     a.click();
     URL.revokeObjectURL(a.href);
+    track('export');
     setExportOpen(false);
     success('Chat downloaded as Markdown');
   }
@@ -471,6 +480,7 @@ h1{font-size:18px;color:#4F46E5;margin-bottom:4px}.meta{font-size:12px;color:#9C
     w.document.write(html);
     w.document.close();
     setTimeout(() => w.print(), 400);
+    track('export');
     setExportOpen(false);
     info('Print dialog opened');
   }
@@ -712,7 +722,7 @@ h1{font-size:18px;color:#4F46E5;margin-bottom:4px}.meta{font-size:12px;color:#9C
 
         {demoMode && (
           <div className="demo-footer-note">
-            Demo mode · AI responses simulated · <button onClick={() => window.open('https://ollama.com', '_blank')} className="demo-footer-link">Install Ollama for real AI</button>
+            Demo mode · Live AI via OpenAI · <button onClick={() => window.open('https://ollama.com', '_blank')} className="demo-footer-link">Install Ollama for local-only AI</button>
           </div>
         )}
       </div>
