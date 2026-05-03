@@ -9,16 +9,18 @@ export default function MCPServerCard({ server, isVaultServer = false, onStatusC
   const [config, setConfig] = useState(null);
   const [showTools, setShowTools] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [startError, setStartError] = useState(null);
 
   async function handleStart() {
     setLoading(true);
+    setStartError(null);
     try {
       await startMCPServer(transport, parseInt(port));
       const cfg = await getMCPServerConfig(transport, port);
       setConfig(cfg.snippet);
       onStatusChange?.();
     } catch (err) {
-      alert('Failed to start MCP server: ' + err.message);
+      setStartError(err.response?.data?.error || err.message);
     } finally {
       setLoading(false);
     }
@@ -105,6 +107,12 @@ export default function MCPServerCard({ server, isVaultServer = false, onStatusC
           </button>
         )}
       </div>
+
+      {startError && (
+        <div className="border-t border-gray-100 px-4 py-2 bg-red-50 text-xs text-red-600 flex items-center gap-2">
+          <span>⚠️</span> {startError}
+        </div>
+      )}
 
       {isVaultServer && connected && config && (
         <div className="border-t border-gray-100 px-4 py-3 bg-gray-50">

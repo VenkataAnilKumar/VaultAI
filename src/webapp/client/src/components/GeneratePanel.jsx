@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
-import { PlusIcon, FileTextIcon, Loader2Icon, DownloadIcon, CopyIcon } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import {
+  PlusIcon, FileTextIcon, Loader2Icon, DownloadIcon, CopyIcon,
+  CheckIcon, RefreshCwIcon, ArrowRightLeftIcon, LayersIcon, ScissorsIcon,
+  SparklesIcon, AlertCircleIcon, WandIcon
+} from 'lucide-react';
 import { generateDocument, transformDocument, synthesizeDocuments, extractData } from '../api/client.js';
 import useStore from '../store/useStore.js';
 
@@ -8,28 +13,46 @@ const SYNTHESIZE_ACTIONS = ['Compare', 'Merge', 'Find Contradictions', 'Extract 
 const EXTRACT_TYPES = ['Dates', 'Names & Contacts', 'Prices', 'Action Items', 'Key Terms'];
 const LANGUAGES = ['Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Portuguese', 'Italian', 'Arabic'];
 
-function TabButton({ active, onClick, children }) {
+const TABS = [
+  { id: 'create',     label: 'Create',     icon: PlusIcon,              desc: 'Generate a new document from a prompt' },
+  { id: 'transform',  label: 'Transform',  icon: ArrowRightLeftIcon,    desc: 'Summarize, translate, or rewrite a file' },
+  { id: 'synthesize', label: 'Synthesize', icon: LayersIcon,            desc: 'Combine or compare multiple documents' },
+  { id: 'extract',    label: 'Extract',    icon: ScissorsIcon,          desc: 'Pull structured data from a file' },
+];
+
+function Chip({ label, active, onClick }) {
   return (
     <button
+      className={`gen-chip ${active ? 'gen-chip-active' : ''}`}
       onClick={onClick}
-      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${active ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
     >
-      {children}
+      {label}
     </button>
   );
 }
 
+function FieldLabel({ children }) {
+  return <div className="gen-label">{children}</div>;
+}
+
 export default function GeneratePanel() {
-  const [tab, setTab] = useState('create');
+  const [tab, setTab]       = useState('create');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
+  const [error, setError]   = useState(null);
+  const [copied, setCopied] = useState(false);
   const { workingDirectory } = useStore();
 
-  const [createForm, setCreateForm] = useState({ prompt: '', contextFiles: '', outputPath: '' });
+  const [createForm, setCreateForm]       = useState({ prompt: '', contextFiles: '', outputPath: '' });
   const [transformForm, setTransformForm] = useState({ inputPath: '', instruction: '', action: '', language: 'Spanish', outputPath: '' });
   const [synthesizeForm, setSynthesizeForm] = useState({ inputPaths: '', instruction: '', action: '', outputPath: '' });
-  const [extractForm, setExtractForm] = useState({ inputPath: '', goal: '', type: '', outputPath: '' });
+  const [extractForm, setExtractForm]     = useState({ inputPath: '', goal: '', type: '', outputPath: '' });
+
+  function switchTab(id) {
+    setTab(id);
+    setResult(null);
+    setError(null);
+  }
 
   async function handleCreate() {
     setLoading(true); setError(null); setResult(null);
@@ -74,192 +97,263 @@ export default function GeneratePanel() {
     finally { setLoading(false); }
   }
 
-  function copyResult() {
+  const handlers = { create: handleCreate, transform: handleTransform, synthesize: handleSynthesize, extract: handleExtract };
+
+  async function copyResult() {
     const text = result?.content || JSON.stringify(result?.data, null, 2) || '';
-    navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
+  function downloadResult() {
+    const content = result?.content || JSON.stringify(result?.data, null, 2) || '';
+    const isJson = !result?.content && result?.data;
+    const ext = isJson ? 'json' : 'md';
+    const blob = new Blob([content], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `vault-ai-output-${Date.now()}.${ext}`;
+    a.click();
+  }
+
+  const isProseResult = !!result?.content;
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="panel-tab-bar border-b flex px-4">
-        <TabButton active={tab === 'create'} onClick={() => { setTab('create'); setResult(null); setError(null); }}>Create</TabButton>
-        <TabButton active={tab === 'transform'} onClick={() => { setTab('transform'); setResult(null); setError(null); }}>Transform</TabButton>
-        <TabButton active={tab === 'synthesize'} onClick={() => { setTab('synthesize'); setResult(null); setError(null); }}>Synthesize</TabButton>
-        <TabButton active={tab === 'extract'} onClick={() => { setTab('extract'); setResult(null); setError(null); }}>Extract</TabButton>
+    <div className="gen-panel">
+      {/* Header */}
+      <div className="gen-header">
+        <SparklesIcon size={16} style={{ color: 'var(--accent)' }} />
+        <div>
+          <div className="gen-title">AI Generator</div>
+          <div className="gen-sub">Create and transform documents with local AI</div>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      {/* Tabs */}
+      <div className="gen-tabs">
+        {TABS.map(t => (
+          <button key={t.id} className={`gen-tab ${tab === t.id ? 'active' : ''}`} onClick={() => switchTab(t.id)}>
+            <t.icon size={12} />
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="gen-body">
+        {/* ── CREATE ─────────────────────────────────── */}
         {tab === 'create' && (
-          <div className="space-y-3">
+          <div className="gen-form">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Describe what to generate</label>
+              <FieldLabel>Describe what to generate</FieldLabel>
               <textarea
                 value={createForm.prompt}
                 onChange={e => setCreateForm(f => ({ ...f, prompt: e.target.value }))}
-                placeholder="Write a project status report for Q1..."
-                rows={3}
-                className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                placeholder="Write a Q1 project status report summarizing milestones, blockers, and next steps..."
+                rows={4}
+                className="gen-textarea"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Context files (one path per line, optional)</label>
+              <FieldLabel>Context files <span className="gen-optional">optional — one path per line</span></FieldLabel>
               <textarea
                 value={createForm.contextFiles}
                 onChange={e => setCreateForm(f => ({ ...f, contextFiles: e.target.value }))}
-                placeholder={`${workingDirectory}/notes.txt`}
+                placeholder={`${workingDirectory}/notes.txt\n${workingDirectory}/data.csv`}
                 rows={2}
-                className="w-full border border-gray-200 rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="gen-textarea gen-mono"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Output path (optional)</label>
+              <FieldLabel>Save output to <span className="gen-optional">optional</span></FieldLabel>
               <input
                 value={createForm.outputPath}
                 onChange={e => setCreateForm(f => ({ ...f, outputPath: e.target.value }))}
-                placeholder={`${workingDirectory}/output.md`}
-                className="w-full border border-gray-200 rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={`${workingDirectory}/report.md`}
+                className="gen-input gen-mono"
               />
             </div>
-            <button onClick={handleCreate} disabled={!createForm.prompt || loading} className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors flex items-center justify-center gap-2">
-              {loading ? <><Loader2Icon size={15} className="animate-spin" />Generating...</> : <><PlusIcon size={15} />Generate Document</>}
-            </button>
           </div>
         )}
 
+        {/* ── TRANSFORM ─────────────────────────────── */}
         {tab === 'transform' && (
-          <div className="space-y-3">
+          <div className="gen-form">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Source file</label>
+              <FieldLabel>Source file</FieldLabel>
               <input
                 value={transformForm.inputPath}
                 onChange={e => setTransformForm(f => ({ ...f, inputPath: e.target.value }))}
                 placeholder={`${workingDirectory}/document.md`}
-                className="w-full border border-gray-200 rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="gen-input gen-mono"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Quick actions</label>
-              <div className="flex flex-wrap gap-1.5">
+              <FieldLabel>Quick action</FieldLabel>
+              <div className="gen-chips">
                 {TRANSFORM_ACTIONS.map(a => (
-                  <button key={a} onClick={() => setTransformForm(f => ({ ...f, action: a }))}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${transformForm.action === a ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                    {a}
-                  </button>
+                  <Chip key={a} label={a} active={transformForm.action === a}
+                    onClick={() => setTransformForm(f => ({ ...f, action: f.action === a ? '' : a }))} />
                 ))}
               </div>
             </div>
             {transformForm.action === 'Translate' && (
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Target language</label>
-                <select value={transformForm.language} onChange={e => setTransformForm(f => ({ ...f, language: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <FieldLabel>Target language</FieldLabel>
+                <select value={transformForm.language} onChange={e => setTransformForm(f => ({ ...f, language: e.target.value }))} className="gen-select">
                   {LANGUAGES.map(l => <option key={l}>{l}</option>)}
                 </select>
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Custom instruction (optional)</label>
+              <FieldLabel>Custom instruction <span className="gen-optional">overrides quick action</span></FieldLabel>
               <input value={transformForm.instruction} onChange={e => setTransformForm(f => ({ ...f, instruction: e.target.value }))}
-                placeholder="Or write your own instruction..." className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                placeholder="Or write your own instruction..." className="gen-input" />
             </div>
-            <button onClick={handleTransform} disabled={!transformForm.inputPath || (!transformForm.action && !transformForm.instruction) || loading}
-              className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors flex items-center justify-center gap-2">
-              {loading ? <><Loader2Icon size={15} className="animate-spin" />Transforming...</> : 'Transform Document'}
-            </button>
           </div>
         )}
 
+        {/* ── SYNTHESIZE ────────────────────────────── */}
         {tab === 'synthesize' && (
-          <div className="space-y-3">
+          <div className="gen-form">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Input files (one path per line, 2+ files)</label>
+              <FieldLabel>Input files <span className="gen-optional">one path per line, 2+ files</span></FieldLabel>
               <textarea value={synthesizeForm.inputPaths} onChange={e => setSynthesizeForm(f => ({ ...f, inputPaths: e.target.value }))}
                 placeholder={`${workingDirectory}/doc1.pdf\n${workingDirectory}/doc2.md`}
-                rows={3} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                rows={3} className="gen-textarea gen-mono" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Quick actions</label>
-              <div className="flex flex-wrap gap-1.5">
+              <FieldLabel>Action</FieldLabel>
+              <div className="gen-chips">
                 {SYNTHESIZE_ACTIONS.map(a => (
-                  <button key={a} onClick={() => setSynthesizeForm(f => ({ ...f, action: a }))}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${synthesizeForm.action === a ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                    {a}
-                  </button>
+                  <Chip key={a} label={a} active={synthesizeForm.action === a}
+                    onClick={() => setSynthesizeForm(f => ({ ...f, action: f.action === a ? '' : a }))} />
                 ))}
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Custom instruction</label>
+              <FieldLabel>Custom instruction <span className="gen-optional">optional</span></FieldLabel>
               <input value={synthesizeForm.instruction} onChange={e => setSynthesizeForm(f => ({ ...f, instruction: e.target.value }))}
-                placeholder="Or describe what to do with these files..." className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                placeholder="Describe what to do with these files..." className="gen-input" />
             </div>
-            <button onClick={handleSynthesize} disabled={!synthesizeForm.inputPaths || (!synthesizeForm.action && !synthesizeForm.instruction) || loading}
-              className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors flex items-center justify-center gap-2">
-              {loading ? <><Loader2Icon size={15} className="animate-spin" />Synthesizing...</> : 'Synthesize Documents'}
-            </button>
           </div>
         )}
 
+        {/* ── EXTRACT ───────────────────────────────── */}
         {tab === 'extract' && (
-          <div className="space-y-3">
+          <div className="gen-form">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Source document</label>
+              <FieldLabel>Source document</FieldLabel>
               <input value={extractForm.inputPath} onChange={e => setExtractForm(f => ({ ...f, inputPath: e.target.value }))}
-                placeholder={`${workingDirectory}/document.pdf`} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                placeholder={`${workingDirectory}/document.pdf`} className="gen-input gen-mono" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Extract type</label>
-              <div className="flex flex-wrap gap-1.5">
+              <FieldLabel>What to extract</FieldLabel>
+              <div className="gen-chips">
                 {EXTRACT_TYPES.map(t => (
-                  <button key={t} onClick={() => setExtractForm(f => ({ ...f, type: t }))}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${extractForm.type === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                    {t}
-                  </button>
+                  <Chip key={t} label={t} active={extractForm.type === t}
+                    onClick={() => setExtractForm(f => ({ ...f, type: f.type === t ? '' : t }))} />
                 ))}
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Custom goal</label>
+              <FieldLabel>Custom goal <span className="gen-optional">optional</span></FieldLabel>
               <input value={extractForm.goal} onChange={e => setExtractForm(f => ({ ...f, goal: e.target.value }))}
-                placeholder="Extract all company names and their revenues..." className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                placeholder="Extract all company names and their revenues..." className="gen-input" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Export path (optional, .csv or .json)</label>
+              <FieldLabel>Export path <span className="gen-optional">optional, .csv or .json</span></FieldLabel>
               <input value={extractForm.outputPath} onChange={e => setExtractForm(f => ({ ...f, outputPath: e.target.value }))}
-                placeholder={`${workingDirectory}/extracted.csv`} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                placeholder={`${workingDirectory}/extracted.csv`} className="gen-input gen-mono" />
             </div>
-            <button onClick={handleExtract} disabled={!extractForm.inputPath || (!extractForm.type && !extractForm.goal) || loading}
-              className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors flex items-center justify-center gap-2">
-              {loading ? <><Loader2Icon size={15} className="animate-spin" />Extracting...</> : 'Extract Data'}
-            </button>
           </div>
         )}
 
+        {/* Submit button */}
+        <button
+          onClick={handlers[tab]}
+          disabled={loading || (
+            (tab === 'create'     && !createForm.prompt) ||
+            (tab === 'transform'  && (!transformForm.inputPath || (!transformForm.action && !transformForm.instruction))) ||
+            (tab === 'synthesize' && (!synthesizeForm.inputPaths || (!synthesizeForm.action && !synthesizeForm.instruction))) ||
+            (tab === 'extract'    && (!extractForm.inputPath || (!extractForm.type && !extractForm.goal)))
+          )}
+          className="gen-submit-btn"
+        >
+          {loading
+            ? <><Loader2Icon size={14} className="spin" /> {TABS.find(t => t.id === tab)?.label}ing…</>
+            : <><WandIcon size={14} /> {TABS.find(t => t.id === tab)?.label}</>
+          }
+        </button>
+
+        {/* Error */}
         {error && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            {error}
+          <div className="gen-error">
+            <AlertCircleIcon size={13} />
+            <span>{error}</span>
           </div>
         )}
 
+        {/* Result */}
         {result && (
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-gray-700">Result</span>
-              <div className="flex gap-2">
-                <button onClick={copyResult} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700">
-                  <CopyIcon size={12} />Copy
+          <div className="gen-result">
+            <div className="gen-result-header">
+              <div className="gen-result-meta">
+                <FileTextIcon size={13} />
+                <span>Result</span>
+                {result.model && <span className="gen-model-badge">{result.model}</span>}
+                {result.wordCount && <span className="gen-word-count">{result.wordCount} words</span>}
+              </div>
+              <div className="gen-result-actions">
+                <button className="gen-action-btn" onClick={copyResult}>
+                  {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+                <button className="gen-action-btn" onClick={downloadResult}>
+                  <DownloadIcon size={12} /> Download
+                </button>
+                <button className="gen-action-btn" onClick={() => { setResult(null); setError(null); }}>
+                  <RefreshCwIcon size={12} /> New
                 </button>
               </div>
             </div>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs font-mono max-h-64 overflow-y-auto whitespace-pre-wrap">
-              {result.content || JSON.stringify(result.data, null, 2)}
-            </div>
+
             {result.outputPath && (
-              <p className="mt-2 text-xs text-green-600">Saved to: {result.outputPath}</p>
+              <div className="gen-saved-path">Saved to {result.outputPath}</div>
             )}
-            {result.model && (
-              <p className="mt-1 text-xs text-gray-400">Model: {result.model}</p>
-            )}
+
+            <div className={`gen-result-body ${isProseResult ? 'gen-result-prose' : 'gen-result-code'}`}>
+              {isProseResult ? (
+                <ReactMarkdown
+                  components={{
+                    h1: ({children}) => <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-1)', margin: '10px 0 6px' }}>{children}</h1>,
+                    h2: ({children}) => <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', margin: '10px 0 5px', borderBottom: '1px solid var(--border)', paddingBottom: 3 }}>{children}</h2>,
+                    h3: ({children}) => <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', margin: '8px 0 4px' }}>{children}</h3>,
+                    p:  ({children}) => <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.65, marginBottom: 6 }}>{children}</p>,
+                    li: ({children}) => <li style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6, marginBottom: 3 }}>{children}</li>,
+                    ul: ({children}) => <ul style={{ paddingLeft: 16, margin: '4px 0' }}>{children}</ul>,
+                    ol: ({children}) => <ol style={{ paddingLeft: 16, margin: '4px 0' }}>{children}</ol>,
+                    strong: ({children}) => <strong style={{ fontWeight: 600, color: 'var(--text-1)' }}>{children}</strong>,
+                    em: ({children}) => <em style={{ color: 'var(--text-3)', fontStyle: 'italic' }}>{children}</em>,
+                    code: ({inline, children}) => inline
+                      ? <code style={{ fontFamily: 'monospace', fontSize: 12, background: 'var(--surface-2)', padding: '1px 4px', borderRadius: 3 }}>{children}</code>
+                      : <pre style={{ fontFamily: 'monospace', fontSize: 12, background: 'var(--surface-2)', padding: 10, borderRadius: 6, overflow: 'auto' }}><code>{children}</code></pre>,
+                  }}
+                >
+                  {result.content}
+                </ReactMarkdown>
+              ) : (
+                <pre>{JSON.stringify(result.data, null, 2)}</pre>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!result && !error && !loading && (
+          <div className="gen-empty">
+            <SparklesIcon size={32} style={{ color: '#d1d5db', marginBottom: 10 }} />
+            <div className="gen-empty-title">{TABS.find(t => t.id === tab)?.desc}</div>
           </div>
         )}
       </div>
