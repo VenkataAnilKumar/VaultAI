@@ -11,6 +11,17 @@ export default defineConfig({
     headers: {
       'X-Frame-Options': 'ALLOWALL',
       'Content-Security-Policy': "frame-ancestors *",
-    }
-  }
+    },
+    proxy: {
+      '/app': {
+        target: 'http://localhost:5173',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/app/, ''),
+      },
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
+  },
 });
