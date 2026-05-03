@@ -3,6 +3,9 @@ const { SQLiteConnector } = require('./sqlite');
 const { GitConnector } = require('./git');
 const { EmailConnector } = require('./email');
 const { BookmarksConnector } = require('./bookmarks');
+const { NotionConnector } = require('./notion');
+const { GitHubConnector } = require('./github');
+const { BrowserHistoryConnector } = require('./browserhistory');
 
 class ConnectorRegistry {
   constructor() {
@@ -12,7 +15,7 @@ class ConnectorRegistry {
   }
 
   _registerBuiltins() {
-    for (const Cls of [ObsidianConnector, SQLiteConnector, GitConnector, EmailConnector, BookmarksConnector]) {
+    for (const Cls of [ObsidianConnector, SQLiteConnector, GitConnector, EmailConnector, BookmarksConnector, NotionConnector, GitHubConnector, BrowserHistoryConnector]) {
       const instance = new Cls();
       this.connectors.set(instance.name, Cls);
     }
@@ -82,6 +85,19 @@ class ConnectorRegistry {
       if (toolName === 'email_search') return { success: true, result: await connector.search(args.query) };
       if (toolName === 'bookmarks_list') return { success: true, result: await connector.list() };
       if (toolName === 'bookmarks_search') return { success: true, result: await connector.search(args.query) };
+      // Notion
+      if (toolName === 'notion_list')   return { success: true, result: await connector.list() };
+      if (toolName === 'notion_read')   return { success: true, result: await connector.read(args.id) };
+      if (toolName === 'notion_search') return { success: true, result: await connector.search(args.query) };
+      // GitHub
+      if (toolName === 'github_list')   return { success: true, result: await connector.list() };
+      if (toolName === 'github_read')   return { success: true, result: await connector.read(args.number) };
+      if (toolName === 'github_search') return { success: true, result: await connector.search(args.query) };
+      if (toolName === 'github_readme') return { success: true, result: await connector.getReadme() };
+      // Browser History
+      if (toolName === 'browserhistory_list')   return { success: true, result: await connector.list() };
+      if (toolName === 'browserhistory_search') return { success: true, result: await connector.search(args.query) };
+      if (toolName === 'browserhistory_top')    return { success: true, result: await connector.getTopSites(args.limit || 20) };
       return { success: false, error: `Unknown tool: ${toolName}` };
     } catch (err) {
       return { success: false, error: err.message };

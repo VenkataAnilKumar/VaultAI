@@ -329,10 +329,14 @@ cd src/landing && npm install && npm run dev
 | P4 | **Mobile toolbar fixes** | `@media ≤600px` rules: toolbar no-wrap/scroll, compact button sizes, export dropdown positioning |
 | 11 | **Scheduled summaries** | `server/routes/digest.js` — SQLite-backed, scans dirs for changed files, AI summary, 5-min scheduler loop; `DigestPanel.jsx` with History/Schedule tabs, Run-now strip, collapsible digest cards, interval config, per-dir management |
 
-### 🔜 Remaining
-| # | Feature | Notes |
-|---|---------|-------|
-| 9 | **More connectors** | Notion, GitHub Issues, browser history |
+### ✅ Tier 5 — Complete (More Connectors)
+| # | Feature | Implementation |
+|---|---------|---------------|
+| 9a | **Notion connector** | `connectors/notion.js` — Notion API v1; `connect()` validates integration token; `list()` recent pages, `read(id)` full page blocks, `search(q)` workspace search; Tools: `notion_list`, `notion_read`, `notion_search` |
+| 9b | **GitHub Issues connector** | `connectors/github.js` — GitHub REST API v2022-11-28; `connect()` validates PAT + repo; `list()` open issues/PRs, `read(n)` issue + comments, `search(q)` issues API; Tools: `github_list`, `github_read`, `github_search`, `github_readme` |
+| 9c | **Browser History connector** | `connectors/browserhistory.js` — reads Chrome/Brave/Edge/Firefox SQLite files via temp-copy (safe while browser is open); auto-detects browser; `list()` recent 50, `search(q)` by URL/title, `getTopSites(n)`; Tools: `browserhistory_list`, `browserhistory_search`, `browserhistory_top` |
+
+### ✅ All 11 roadmap items complete
 
 ---
 
