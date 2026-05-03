@@ -14,6 +14,7 @@ class OrchestratorAgent {
   }
 
   isComplexTask(message) {
+    if (!message || typeof message !== 'string') return false;
     const lower = message.toLowerCase();
     return COMPLEX_KEYWORDS.some(kw => lower.includes(kw));
   }

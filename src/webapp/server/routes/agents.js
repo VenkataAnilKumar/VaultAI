@@ -10,6 +10,8 @@ const modelRouter = new ModelRouter(ollama);
 router.post('/run', async (req, res) => {
   const { message, workingDirectory, stream = false } = req.body;
 
+  if (!message) return res.status(400).json({ error: 'message is required' });
+
   const orchestrator = new OrchestratorAgent(ollama, modelRouter);
 
   if (!orchestrator.isComplexTask(message)) {
