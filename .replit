@@ -80,3 +80,4 @@ deploymentTarget = "vm"
 [agent]
 expertMode = true
 stack = "BEST_EFFORT_FALLBACK"
+integrations = ["javascript_openai_ai_integrations:2.0.0"]
