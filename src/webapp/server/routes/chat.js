@@ -35,6 +35,10 @@ router.post('/', async (req, res) => {
   try {
     const { message, history = [], workingDirectory, modelOverride, workflowMode = 'simple' } = req.body;
 
+    if (!message) {
+      return res.status(400).json({ error: 'message is required' });
+    }
+
     // Try multi-agent orchestration first
     if (workflowMode === 'multi-agent') {
       const orchestrator = new OrchestratorAgent(ollama, modelRouter);
@@ -70,6 +74,7 @@ router.post('/', async (req, res) => {
 
     if (response.message?.tool_calls && response.message.tool_calls.length > 0) {
       const toolCall = response.message.tool_calls[0];
+      const toolCallId = toolCall.id || `call_${Date.now()}`;
       const toolName = toolCall.function.name;
       const toolArgs = typeof toolCall.function.arguments === 'string'
         ? JSON.parse(toolCall.function.arguments)
@@ -110,7 +115,7 @@ router.post('/', async (req, res) => {
       const followUpMessages = [
         ...messages,
         response.message,
-        { role: 'tool', content: JSON.stringify(result) }
+        { role: 'tool', tool_call_id: toolCallId, content: JSON.stringify(result) }
       ];
 
       const followUp = await ollama.chat(model, followUpMessages);

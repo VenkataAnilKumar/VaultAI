@@ -148,11 +148,27 @@ Start the app:
 cd src/webapp && npm install && npm run dev
 ```
 
+## OpenAI Fallback (Live Demo Mode)
+
+When Ollama is not running locally, the app automatically falls back to OpenAI:
+- **Models available**: `gpt-5-mini` (default), `gpt-5.4`
+- **Integration**: Replit OpenAI integration (`OPENAI_API_KEY` injected automatically)
+- **Model router**: `ModelRouter` in `ollama.js` tries Ollama first, falls back to `openaiClient.js`
+- **Tool use**: OpenAI tool calls include `id` + `type:"function"` — critical for follow-up messages
+
+## Theme
+
+- **Default**: Dark Premium (`#0A0A0F` background, `#6366F1` indigo accent)
+- **Storage key**: `vault-ai-theme` in localStorage
+- **Flash prevention**: Inline script in `index.html` applies theme before React mounts
+- **Toggle**: Settings panel (bottom-left of sidebar)
+
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | OLLAMA_BASE_URL | http://localhost:11434 | Ollama API endpoint |
+| OPENAI_API_KEY | (Replit integration) | OpenAI fallback when Ollama unavailable |
 | PORT | 3001 | Express server port |
 
 ## Security

@@ -56,26 +56,42 @@ class WebSearchService {
     }
   }
 
+  _decodeUrl(raw) {
+    let url = raw;
+    if (url.startsWith('//')) url = 'https:' + url;
+    if (url.includes('duckduckgo.com/l/')) {
+      try {
+        const uddg = new URL(url).searchParams.get('uddg');
+        if (uddg) url = decodeURIComponent(uddg);
+        else return null;
+      } catch { return null; }
+    }
+    if (url.startsWith('/') || !url.startsWith('http')) return null;
+    return url;
+  }
+
   _parseHtml(html, maxResults) {
     const results = [];
-    // Match result blocks
-    const blockRe = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]*?<a[^>]+class="result__snippet"[^>]*>([^<]+)<\/a>/g;
+    const blockRe = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
     let m;
     while ((m = blockRe.exec(html)) !== null && results.length < maxResults) {
-      let url = m[1];
-      if (url.startsWith('//')) url = 'https:' + url;
-      if (url.includes('duckduckgo.com/l/') || url.startsWith('/')) continue;
-      results.push({ url, title: m[2].trim(), snippet: m[3].replace(/&#\d+;/g, ' ').trim() });
+      const url = this._decodeUrl(m[1]);
+      if (!url) continue;
+      const title = m[2].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").trim();
+      const snippet = m[3].replace(/<[^>]+>/g, '').replace(/&#\d+;/g, ' ').replace(/&amp;/g, '&').trim();
+      if (title && snippet) results.push({ url, title, snippet });
     }
-    // Fallback simpler pattern
     if (results.length === 0) {
-      const titleRe = /class="result__a"[^>]+href="([^"]+)"[^>]*>([^<]{3,80})<\/a>/g;
-      const snipRe = /class="result__snippet"[^>]*>([^<]{10,300})<\/a>/g;
+      const titleRe = /class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+      const snipRe = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
       const titles = [], snips = [];
-      while ((m = titleRe.exec(html)) !== null) titles.push({ url: m[1], title: m[2].trim() });
-      while ((m = snipRe.exec(html)) !== null) snips.push(m[1].replace(/&#\d+;/g, ' ').trim());
+      while ((m = titleRe.exec(html)) !== null) {
+        const url = this._decodeUrl(m[1]);
+        if (url) titles.push({ url, title: m[2].replace(/<[^>]+>/g, '').trim() });
+      }
+      while ((m = snipRe.exec(html)) !== null) snips.push(m[1].replace(/<[^>]+>/g, '').replace(/&#\d+;/g, ' ').trim());
       for (let i = 0; i < Math.min(titles.length, snips.length, maxResults); i++) {
-        results.push({ ...titles[i], snippet: snips[i] });
+        if (titles[i].title && snips[i]) results.push({ ...titles[i], snippet: snips[i] });
       }
     }
     return results;
