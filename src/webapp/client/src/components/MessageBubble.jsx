@@ -22,15 +22,15 @@ export default function MessageBubble({ message }) {
         AI
       </div>
       <div className="flex-1 min-w-0">
-        <div className={`bg-white border rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm text-sm ${message.isError ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
-          <div className={`prose prose-sm max-w-none ${message.isError ? 'text-red-700' : 'text-gray-800'}`}>
+        <div className={`msg-bubble rounded-2xl rounded-tl-sm px-4 py-3 text-sm ${message.isError ? 'msg-bubble-error' : ''}`}>
+          <div className="msg-bubble-content prose prose-sm max-w-none">
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
         </div>
 
         <div className="flex items-center gap-2 mt-1 ml-1">
           {message.model && (
-            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+            <span className="msg-model-badge">
               {message.model}
             </span>
           )}
@@ -38,7 +38,7 @@ export default function MessageBubble({ message }) {
           {message.toolsUsed && message.toolsUsed.length > 0 && (
             <button
               onClick={() => setShowTools(v => !v)}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+              className="msg-tools-btn flex items-center gap-1"
             >
               <WrenchIcon size={11} />
               {message.toolsUsed.length} tool{message.toolsUsed.length > 1 ? 's' : ''}
@@ -50,7 +50,7 @@ export default function MessageBubble({ message }) {
         {showTools && message.toolsUsed && (
           <div className="mt-1 ml-1 flex flex-wrap gap-1">
             {message.toolsUsed.map(tool => (
-              <span key={tool} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono">
+              <span key={tool} className="msg-tool-chip font-mono">
                 {tool}
               </span>
             ))}
@@ -58,7 +58,7 @@ export default function MessageBubble({ message }) {
         )}
 
         {message.timestamp && (
-          <span className="text-xs text-gray-300 ml-1 mt-1 block">
+          <span className="msg-timestamp ml-1 mt-1 block">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         )}

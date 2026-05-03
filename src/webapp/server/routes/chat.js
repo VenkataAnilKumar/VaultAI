@@ -73,56 +73,68 @@ router.post('/', async (req, res) => {
     const response = await ollama.chat(model, messages, allTools);
 
     if (response.message?.tool_calls && response.message.tool_calls.length > 0) {
-      const toolCall = response.message.tool_calls[0];
-      const toolCallId = toolCall.id || `call_${Date.now()}`;
-      const toolName = toolCall.function.name;
-      const toolArgs = typeof toolCall.function.arguments === 'string'
-        ? JSON.parse(toolCall.function.arguments)
-        : toolCall.function.arguments;
+      const toolCalls = response.message.tool_calls;
 
-      const isDestructive = DESTRUCTIVE_TOOLS.includes(toolName);
-      const isBulkMove = toolName === 'bulk_move' && toolArgs.files && toolArgs.files.length > 3;
-
-      if (isDestructive || isBulkMove) {
-        const affectedFiles = toolArgs.path ? [toolArgs.path] : (toolArgs.files || []);
-        return res.json({
-          requiresConfirmation: true,
-          pendingAction: {
-            function: { name: toolName, arguments: toolArgs },
-            description: `${toolName.replace(/_/g, ' ')} on ${affectedFiles.join(', ')}`,
-            affectedFiles
-          },
-          model,
-          message: 'I need your confirmation before proceeding with this operation.'
-        });
+      // Check if any call is destructive before executing any of them
+      for (const tc of toolCalls) {
+        const toolName = tc.function.name;
+        const toolArgs = typeof tc.function.arguments === 'string'
+          ? JSON.parse(tc.function.arguments)
+          : tc.function.arguments;
+        const isDestructive = DESTRUCTIVE_TOOLS.includes(toolName);
+        const isBulkMove = toolName === 'bulk_move' && toolArgs.files && toolArgs.files.length > 3;
+        if (isDestructive || isBulkMove) {
+          const affectedFiles = toolArgs.path ? [toolArgs.path] : (toolArgs.files || []);
+          return res.json({
+            requiresConfirmation: true,
+            pendingAction: {
+              function: { name: toolName, arguments: toolArgs },
+              description: `${toolName.replace(/_/g, ' ')} on ${affectedFiles.join(', ')}`,
+              affectedFiles
+            },
+            model,
+            message: 'I need your confirmation before proceeding with this operation.'
+          });
+        }
       }
 
-      let result;
-      // Route to connector tools
+      // Execute all tool calls in parallel
       const connectorPrefixes = ['obsidian_', 'sqlite_', 'git_', 'email_', 'bookmarks_'];
-      const isConnectorTool = connectorPrefixes.some(p => toolName.startsWith(p));
-      // Route to external MCP tools
-      const isMCPTool = toolName.includes('__');
+      const toolResultMessages = await Promise.all(toolCalls.map(async (tc) => {
+        const toolCallId = tc.id || `call_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const toolName = tc.function.name;
+        const toolArgs = typeof tc.function.arguments === 'string'
+          ? JSON.parse(tc.function.arguments)
+          : tc.function.arguments;
 
-      if (isConnectorTool) {
-        result = await connectorRegistry.executeConnectorTool(toolName, toolArgs);
-      } else if (isMCPTool) {
-        result = await mcpRegistry.callExternalTool(toolName, toolArgs);
-      } else {
-        result = await fileOps.executeTool(toolName, toolArgs);
-      }
+        let result;
+        const isConnectorTool = connectorPrefixes.some(p => toolName.startsWith(p));
+        const isMCPTool = toolName.includes('__');
+        try {
+          if (isConnectorTool) {
+            result = await connectorRegistry.executeConnectorTool(toolName, toolArgs);
+          } else if (isMCPTool) {
+            result = await mcpRegistry.callExternalTool(toolName, toolArgs);
+          } else {
+            result = await fileOps.executeTool(toolName, toolArgs);
+          }
+        } catch (err) {
+          result = { success: false, error: err.message };
+        }
+        return { msg: { role: 'tool', tool_call_id: toolCallId, content: JSON.stringify(result) }, toolName, result };
+      }));
 
       const followUpMessages = [
         ...messages,
         response.message,
-        { role: 'tool', tool_call_id: toolCallId, content: JSON.stringify(result) }
+        ...toolResultMessages.map(t => t.msg)
       ];
 
       const followUp = await ollama.chat(model, followUpMessages);
       return res.json({
         response: followUp.message?.content || '',
-        toolsUsed: [toolName],
-        toolResult: result,
+        toolsUsed: toolResultMessages.map(t => t.toolName),
+        toolResult: toolResultMessages[0]?.result,
         model
       });
     }

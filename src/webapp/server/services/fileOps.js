@@ -25,11 +25,11 @@ async function executeTool(toolName, args) {
         const { path: dirPath } = args;
         const v = validatePath(dirPath);
         if (!v.valid) return { success: false, error: v.error };
-        const entries = fs.readdirSync(v.resolved, { withFileTypes: true });
-        const files = entries.map(e => {
+        const entries = await fs.readdir(v.resolved, { withFileTypes: true });
+        const files = await Promise.all(entries.map(async (e) => {
           const fullPath = path.join(v.resolved, e.name);
-          let stat;
-          try { stat = fs.statSync(fullPath); } catch { stat = null; }
+          let stat = null;
+          try { stat = await fs.stat(fullPath); } catch {}
           return {
             name: e.name,
             path: fullPath,
@@ -38,7 +38,8 @@ async function executeTool(toolName, args) {
             modified: stat ? stat.mtime.toISOString() : null,
             extension: e.isDirectory() ? null : path.extname(e.name).toLowerCase()
           };
-        }).sort((a, b) => {
+        }));
+        files.sort((a, b) => {
           if (a.type === 'directory' && b.type !== 'directory') return -1;
           if (a.type !== 'directory' && b.type === 'directory') return 1;
           return a.name.localeCompare(b.name);
@@ -88,7 +89,7 @@ async function executeTool(toolName, args) {
         const { path: dirPath } = args;
         const v = validatePath(dirPath);
         if (!v.valid) return { success: false, error: v.error };
-        fs.mkdirSync(v.resolved, { recursive: true });
+        await fs.mkdir(v.resolved, { recursive: true });
         return { success: true, result: { created: true, path: v.resolved } };
       }
 
@@ -100,7 +101,7 @@ async function executeTool(toolName, args) {
         const v = validatePath(filePath);
         if (!v.valid) return { success: false, error: v.error };
         const newPath = path.join(path.dirname(v.resolved), new_name);
-        fs.renameSync(v.resolved, newPath);
+        await fs.rename(v.resolved, newPath);
         return { success: true, result: { renamed: true, from: v.resolved, to: newPath } };
       }
 
@@ -108,7 +109,7 @@ async function executeTool(toolName, args) {
         const { path: filePath } = args;
         const v = validatePath(filePath);
         if (!v.valid) return { success: false, error: v.error };
-        const stat = fs.statSync(v.resolved);
+        const stat = await fs.stat(v.resolved);
         return {
           success: true,
           result: {
@@ -129,20 +130,20 @@ async function executeTool(toolName, args) {
         const v = validatePath(directory);
         if (!v.valid) return { success: false, error: v.error };
         const results = [];
-        function walk(dir) {
+        async function walk(dir) {
           let entries;
-          try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
-          for (const e of entries) {
+          try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { return; }
+          await Promise.all(entries.map(async (e) => {
             const fullPath = path.join(dir, e.name);
             if (e.name.toLowerCase().includes(query.toLowerCase())) {
-              let stat;
-              try { stat = fs.statSync(fullPath); } catch { stat = null; }
+              let stat = null;
+              try { stat = await fs.stat(fullPath); } catch {}
               results.push({ name: e.name, path: fullPath, size: stat?.size || 0, modified: stat?.mtime?.toISOString() });
             }
-            if (recursive && e.isDirectory()) walk(fullPath);
-          }
+            if (recursive && e.isDirectory()) await walk(fullPath);
+          }));
         }
-        walk(v.resolved);
+        await walk(v.resolved);
         return { success: true, result: { results, count: results.length } };
       }
 

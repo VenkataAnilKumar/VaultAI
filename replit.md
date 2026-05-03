@@ -180,8 +180,31 @@ When Ollama is not running locally, the app automatically falls back to OpenAI:
 - MCP API keys never in responses or logs
 - PII scanner helps identify sensitive data in documents
 
+## Performance & Reliability (Audit Pass)
+
+### Server
+- **Gzip compression** — `compression` middleware at level 6 (1KB threshold) on all API responses
+- **Multi-tool calls** — `chat.js` now loops all `tool_calls` in parallel via `Promise.all` (was only handling `tool_calls[0]`, silently dropping extra calls)
+- **Async file ops** — `fileOps.js` fully converted from blocking `readdirSync`/`statSync`/`mkdirSync`/`renameSync` to async `readdir`/`stat`/`mkdir`/`rename` — prevents event-loop blocking on large directories
+
+### Client
+- **Code splitting** — `vite.config.js` `manualChunks` splits bundle into focused async chunks:
+  - Initial load: **44KB** (was 455KB monolithic) — **90% reduction**
+  - Vendor chunks: react, markdown, axios, lucide, zustand loaded separately
+  - Panel chunks: DocumentAgent, Research, Skills, Generate, Connectors+MCP loaded lazily
+- **React.lazy + Suspense** — All 6 heavy panels lazy-loaded in `App.jsx`; `<PanelSkeleton>` shown while loading
+- **renderPanel memoized** — Wrapped in `useMemo([activeTab])` — prevents JSX recreation on every parent render
+- **Stale closure fix** — `App.jsx` polling interval uses `demoModeRef` to avoid reading stale `demoMode` from closure
+- **Session save debounce** — `useEffect` for session save wrapped in `setTimeout` with proper cleanup
+- **Error boundary** — `ErrorBoundary.jsx` class component wraps each panel; catches render crashes, shows "Try again" UI
+- **CmdLine timer leak** — `setTimeout` tracked via `useRef` in `CmdLine` component; cleared on unmount
+- **Voice recognition cleanup** — `useEffect` return now calls `rec.abort()` and nulls all event handlers on unmount
+- **MessageBubble dark mode** — Hardcoded `bg-white`/`border-gray-200`/`text-gray-800` replaced with `msg-bubble` CSS class with full dark-mode variants
+- **OllamaSetupGuide dark mode** — All 300+ lines of hardcoded light-theme inline styles converted to `ollama-guide` CSS classes with dark mode support
+- **Chat UI CSS** — Demo exit button, voice button, offline banner, listening indicator, welcome screen, feature cards, suggestions all converted to theme-aware CSS classes
+
 ## Dependencies
 
-Server: express, cors, better-sqlite3, pdf-parse, mammoth, xlsx, fs-extra, trash, axios, md5, simple-git, js-yaml, mailparser, html-to-text, @modelcontextprotocol/sdk
+Server: express, cors, compression, better-sqlite3, pdf-parse, mammoth, xlsx, fs-extra, trash, axios, md5, simple-git, js-yaml, mailparser, html-to-text, @modelcontextprotocol/sdk
 
 Client: react, react-dom, zustand, axios, lucide-react, react-markdown, tailwindcss

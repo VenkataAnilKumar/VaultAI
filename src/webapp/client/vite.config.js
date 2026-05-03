@@ -14,5 +14,27 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react':    ['react', 'react-dom'],
+          'vendor-markdown': ['react-markdown'],
+          'vendor-zustand':  ['zustand'],
+          'vendor-axios':    ['axios'],
+          'vendor-lucide':   ['lucide-react'],
+          'panels-docs':     ['./src/components/document/DocumentAgentPanel.jsx'],
+          'panels-research': ['./src/components/research/ResearchPanel.jsx'],
+          'panels-generate': ['./src/components/GeneratePanel.jsx'],
+          'panels-skills':   ['./src/components/SkillsPanel.jsx'],
+          'panels-connect':  [
+            './src/components/connectors/ConnectorsPanel.jsx',
+            './src/components/mcp/MCPPanel.jsx'
+          ],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 300,
   }
 });

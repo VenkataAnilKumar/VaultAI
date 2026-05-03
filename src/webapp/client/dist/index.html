@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vault AI</title>
+    <script>
+      (function() {
+        var stored = localStorage.getItem('vault-ai-theme') || 'dark';
+        var resolved = stored === 'system'
+          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : stored;
+        document.documentElement.setAttribute('data-theme', resolved);
+      })();
+    </script>
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
@@ -23,8 +32,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/assets/index-CIt4bzHa.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-Cmech2Dr.css">
+    <script type="module" crossorigin src="/assets/index-DVpNiUVv.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-lucide-Db2KaHwe.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-markdown-BYWu-FAz.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-Dk9QFukb.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-axios-B8_nURbH.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-zustand-B5729p4j.js">
+    <link rel="modulepreload" crossorigin href="/assets/panels-docs-qiHqelhP.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-bf4FUXO2.css">
   </head>
   <body>
     <div id="root"></div>

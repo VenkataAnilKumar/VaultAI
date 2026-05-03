@@ -1,10 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const compression = require('compression');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+app.use(compression({ level: 6, threshold: 1024 }));
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));

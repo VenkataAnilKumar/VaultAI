@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
 import {
   LockIcon, MessageSquareIcon, SparklesIcon, PlugIcon, ServerIcon,
   PlusIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, CpuIcon,
@@ -6,20 +6,30 @@ import {
 } from 'lucide-react';
 import FileBrowser from './components/FileBrowser.jsx';
 import Chat from './components/Chat.jsx';
-import GeneratePanel from './components/GeneratePanel.jsx';
 import ModelPanel from './components/ModelPanel.jsx';
 import StatusBar from './components/StatusBar.jsx';
-import ConnectorsPanel from './components/connectors/ConnectorsPanel.jsx';
-import MCPPanel from './components/mcp/MCPPanel.jsx';
-import SkillsPanel from './components/SkillsPanel.jsx';
 import SettingsPanel from './components/SettingsPanel.jsx';
 import SessionHistory from './components/SessionHistory.jsx';
-import DocumentAgentPanel from './components/document/DocumentAgentPanel.jsx';
-import ResearchPanel from './components/research/ResearchPanel.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { useTheme } from './hooks/useTheme.js';
 import { useSessionHistory } from './hooks/useSessionHistory.js';
 import useStore from './store/useStore.js';
 import { checkOllamaStatus, getModels } from './api/client.js';
+
+const DocumentAgentPanel = lazy(() => import('./components/document/DocumentAgentPanel.jsx'));
+const ResearchPanel      = lazy(() => import('./components/research/ResearchPanel.jsx'));
+const SkillsPanel        = lazy(() => import('./components/SkillsPanel.jsx'));
+const GeneratePanel      = lazy(() => import('./components/GeneratePanel.jsx'));
+const ConnectorsPanel    = lazy(() => import('./components/connectors/ConnectorsPanel.jsx'));
+const MCPPanel           = lazy(() => import('./components/mcp/MCPPanel.jsx'));
+
+function PanelSkeleton() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-3)', fontSize: 13 }}>
+      <span style={{ opacity: 0.5 }}>Loading…</span>
+    </div>
+  );
+}
 
 const NAV_ITEMS = [
   { id: 'chat',       label: 'Chat',       icon: MessageSquareIcon },
@@ -49,6 +59,16 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
 
+  // Use ref to avoid stale closure in the polling interval
+  const demoModeRef = useRef(demoMode);
+  useEffect(() => { demoModeRef.current = demoMode; }, [demoMode]);
+
+  function activateDemoMode() {
+    setDemoMode(true);
+    setOllamaConnected(true);
+    setModels([{ name: 'llama3.2 (demo)' }, { name: 'nomic-embed-text (demo)' }]);
+  }
+
   useEffect(() => {
     async function init() {
       try {
@@ -58,7 +78,6 @@ export default function App() {
           const data = await getModels();
           setModels(data.models || []);
         } else {
-          // Auto-start demo mode when deployed without Ollama — zero friction for judges
           activateDemoMode();
         }
       } catch {
@@ -74,20 +93,21 @@ export default function App() {
       }
     }
     init();
+
     const iv = setInterval(async () => {
-      if (demoMode) return; // don't ping Ollama in demo mode
+      if (demoModeRef.current) return;
       try { const s = await checkOllamaStatus(); setOllamaConnected(s.connected); }
       catch { setOllamaConnected(false); }
     }, 30000);
     return () => clearInterval(iv);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (messages.length > 0 && activeTab === 'chat') {
       const timer = setTimeout(() => saveSession(messages), 1500);
       return () => clearTimeout(timer);
     }
-  }, [messages]);
+  }, [messages, activeTab, saveSession]);
 
   const handleKeyDown = useCallback((e) => {
     const mod = e.metaKey || e.ctrlKey;
@@ -95,7 +115,7 @@ export default function App() {
     if (e.key === 'k' || e.key === 'K') { e.preventDefault(); setActiveTab('chat'); clearMessages(); setActiveSessionId(null); }
     if (e.key === 'b' || e.key === 'B') { e.preventDefault(); setSidebarOpen(v => !v); }
     if (e.key === ',') { e.preventDefault(); setSettingsOpen(v => !v); }
-  }, []);
+  }, [setActiveTab, clearMessages]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -116,24 +136,18 @@ export default function App() {
     setActiveSessionId(null);
   }
 
-  function activateDemoMode() {
-    setDemoMode(true);
-    setOllamaConnected(true);
-    setModels([{ name: 'llama3.2 (demo)' }, { name: 'nomic-embed-text (demo)' }]);
-  }
-
-  const renderPanel = () => {
+  const renderPanel = useMemo(() => {
     switch (activeTab) {
       case 'chat':       return <Chat />;
-      case 'documents':  return <DocumentAgentPanel />;
-      case 'research':   return <ResearchPanel />;
-      case 'skills':     return <SkillsPanel />;
-      case 'generate':   return <GeneratePanel />;
-      case 'connectors': return <ConnectorsPanel />;
-      case 'mcp':        return <MCPPanel />;
+      case 'documents':  return <Suspense fallback={<PanelSkeleton />}><DocumentAgentPanel /></Suspense>;
+      case 'research':   return <Suspense fallback={<PanelSkeleton />}><ResearchPanel /></Suspense>;
+      case 'skills':     return <Suspense fallback={<PanelSkeleton />}><SkillsPanel /></Suspense>;
+      case 'generate':   return <Suspense fallback={<PanelSkeleton />}><GeneratePanel /></Suspense>;
+      case 'connectors': return <Suspense fallback={<PanelSkeleton />}><ConnectorsPanel /></Suspense>;
+      case 'mcp':        return <Suspense fallback={<PanelSkeleton />}><MCPPanel /></Suspense>;
       default:           return <Chat />;
     }
-  };
+  }, [activeTab]);
 
   const showFiles   = activeTab === 'chat' || activeTab === 'generate';
   const showThreads = activeTab === 'chat' && sessions.length > 0;
@@ -180,7 +194,6 @@ export default function App() {
           )}
 
           <div className="sidebar-footer">
-            {/* Demo mode quick-launch in sidebar */}
             {!demoMode && !ollamaConnected && (
               <button className="demo-launch-btn" onClick={activateDemoMode}>
                 <PlayIcon size={12} /> Try Demo Mode
@@ -210,7 +223,6 @@ export default function App() {
 
       <main className="main-area">
         <div className="content-card">
-          {/* Demo Mode banner */}
           {demoMode && (
             <div style={{
               background: 'linear-gradient(90deg, #1e1b4b, #2563eb, #7c3aed)',
@@ -258,7 +270,9 @@ export default function App() {
             </div>
           </div>
 
-          <div className="card-body">{renderPanel()}</div>
+          <div className="card-body">
+            <ErrorBoundary key={activeTab}>{renderPanel}</ErrorBoundary>
+          </div>
           <StatusBar />
         </div>
       </main>

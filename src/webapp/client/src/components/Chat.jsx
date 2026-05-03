@@ -11,25 +11,24 @@ import MCPToolBadge from './mcp/MCPToolBadge.jsx';
 // ── Copy-able terminal command ─────────────────────────────────
 function CmdLine({ cmd }) {
   const [copied, setCopied] = useState(false);
+  const timerRef = useRef(null);
+
   function copy() {
     navigator.clipboard.writeText(cmd).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
+      // Clear any existing timer before setting a new one
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 1800);
     });
   }
+
+  // Clean up the timer on unmount so we don't call setState on an unmounted component
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      background: '#1e1e2e', borderRadius: 8, padding: '7px 10px',
-      fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12, color: '#a6e3a1',
-      gap: 8, userSelect: 'none'
-    }}>
+    <div className="cmdline-block">
       <span style={{ flex: 1 }}>{cmd}</span>
-      <button onClick={copy} title="Copy" style={{
-        display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none',
-        cursor: 'pointer', color: copied ? '#a6e3a1' : '#585b70', transition: 'color 0.2s',
-        fontSize: 10, fontFamily: 'inherit', padding: 0
-      }}>
+      <button onClick={copy} title="Copy" className="cmdline-copy-btn">
         {copied ? <><CheckIcon size={12} /> copied</> : <CopyIcon size={12} />}
       </button>
     </div>
@@ -37,62 +36,41 @@ function CmdLine({ cmd }) {
 }
 
 // ── Ollama Setup Guide ─────────────────────────────────────────
-// Friendly, non-intimidating guide shown as a secondary option
-// below the primary Demo Mode CTA.
 function OllamaSetupGuide({ onRetry }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div style={{ borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden', textAlign: 'left', background: '#fff' }}>
-      {/* Toggle header */}
-      <button
-        onClick={() => setOpen(v => !v)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: 12, fontWeight: 600, color: '#374151'
-        }}
-      >
+    <div className="ollama-guide">
+      <button onClick={() => setOpen(v => !v)} className="ollama-guide-header">
         <span>⚙️ Want to use your own files with real AI?</span>
-        <span style={{ fontSize: 16, color: '#9ca3af', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>›</span>
+        <span className="ollama-guide-chevron" style={{ transform: open ? 'rotate(180deg)' : 'none' }}>›</span>
       </button>
 
       {open && (
-        <div style={{ padding: '0 14px 14px', borderTop: '1px solid #f3f4f6' }}>
-          <p style={{ fontSize: 11, color: '#6b7280', margin: '10px 0 14px' }}>
+        <div className="ollama-guide-body">
+          <p className="ollama-guide-desc">
             Vault AI runs AI entirely on your own machine using <strong>Ollama</strong> — free, open-source, and private.
             Follow these 3 steps once, then restart the app.
           </p>
 
-          {/* Step 1 */}
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 5 }}>
-              Step 1 — Install Ollama
-            </div>
-            <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>
+          <div className="ollama-guide-step">
+            <div className="ollama-guide-step-title">Step 1 — Install Ollama</div>
+            <p className="ollama-guide-step-desc">
               Download and install from <strong>ollama.com</strong> — available for Mac, Windows, and Linux. Takes about 2 minutes.
             </p>
             <a
               href="https://ollama.com/download"
               target="_blank"
               rel="noopener noreferrer"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                fontSize: 11, fontWeight: 600, color: '#4f46e5',
-                textDecoration: 'none', padding: '5px 10px',
-                background: '#eef2ff', borderRadius: 6, border: '1px solid #c7d2fe'
-              }}
+              className="ollama-guide-link"
             >
               <ExternalLinkIcon size={11} /> Download Ollama →
             </a>
           </div>
 
-          {/* Step 2 */}
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 5 }}>
-              Step 2 — Start Ollama &amp; pull models
-            </div>
-            <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>
+          <div className="ollama-guide-step">
+            <div className="ollama-guide-step-title">Step 2 — Start Ollama &amp; pull models</div>
+            <p className="ollama-guide-step-desc">
               Open your terminal and run these commands. The first download is ~2 GB total — do it once and it's cached forever.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -100,34 +78,23 @@ function OllamaSetupGuide({ onRetry }) {
               <CmdLine cmd="ollama pull llama3.2" />
               <CmdLine cmd="ollama pull nomic-embed-text" />
             </div>
-            <p style={{ fontSize: 10, color: '#9ca3af', marginTop: 6 }}>
+            <p className="ollama-guide-hint">
               <strong>llama3.2</strong> handles chat, Q&amp;A, and summarization &nbsp;·&nbsp;
               <strong>nomic-embed-text</strong> powers document search
             </p>
           </div>
 
-          {/* Step 3 */}
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 5 }}>
-              Step 3 — Reconnect
-            </div>
-            <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>
+          <div className="ollama-guide-step">
+            <div className="ollama-guide-step-title">Step 3 — Reconnect</div>
+            <p className="ollama-guide-step-desc">
               Once Ollama is running, click the button below and Vault AI will detect it automatically.
             </p>
-            <button
-              onClick={onRetry}
-              style={{
-                width: '100%', padding: '8px', borderRadius: 8,
-                border: '1px solid #d1d5db', background: '#f9fafb',
-                fontSize: 12, fontWeight: 600, color: '#374151',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
-              }}
-            >
+            <button onClick={onRetry} className="ollama-guide-retry-btn">
               <RefreshCwIcon size={13} /> Check connection
             </button>
           </div>
 
-          <div style={{ fontSize: 10, color: '#9ca3af', padding: '8px', background: '#f9fafb', borderRadius: 6, lineHeight: 1.5 }}>
+          <div className="ollama-guide-tip">
             💡 <strong>Tip:</strong> You can use Demo Mode right now to explore every feature — no download needed. Switch to real AI whenever you're ready.
           </div>
         </div>
@@ -154,24 +121,33 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Voice input (Phase 5)
+  // Voice input — create recognition once, clean up on unmount
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SR) {
-      setVoiceSupported(true);
-      const rec = new SR();
-      rec.continuous = false;
-      rec.interimResults = true;
-      rec.lang = 'en-US';
-      rec.onresult = (e) => {
-        const t = Array.from(e.results).map(r => r[0].transcript).join('');
-        setInput(t);
-        if (e.results[e.results.length - 1].isFinal) setListening(false);
-      };
-      rec.onerror = () => setListening(false);
-      rec.onend   = () => setListening(false);
-      recognitionRef.current = rec;
-    }
+    if (!SR) return;
+
+    setVoiceSupported(true);
+    const rec = new SR();
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.lang = 'en-US';
+    rec.onresult = (e) => {
+      const t = Array.from(e.results).map(r => r[0].transcript).join('');
+      setInput(t);
+      if (e.results[e.results.length - 1].isFinal) setListening(false);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend   = () => setListening(false);
+    recognitionRef.current = rec;
+
+    return () => {
+      // Stop recognition and remove event handlers on unmount
+      try { rec.abort(); } catch {}
+      rec.onresult = null;
+      rec.onerror  = null;
+      rec.onend    = null;
+      recognitionRef.current = null;
+    };
   }, []);
 
   function toggleVoice() {
@@ -182,7 +158,6 @@ export default function Chat() {
 
   async function activateDemoMode() {
     setDemoMode(true);
-    // Simulate Ollama connected + models in demo mode
     setOllamaConnected(true);
     setModels([{ name: 'llama3.2 (demo)', size: '2.0GB' }, { name: 'nomic-embed-text (demo)', size: '274MB' }]);
   }
@@ -257,24 +232,14 @@ export default function Chat() {
           {demoMode && (
             <button
               onClick={() => { setDemoMode(false); setOllamaConnected(false); setModels([]); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                fontSize: 11, fontWeight: 600, padding: '3px 10px',
-                borderRadius: 20, border: '1px solid #fbbf24',
-                background: '#fef3c7', color: '#92400e', cursor: 'pointer'
-              }}
+              className="demo-exit-btn"
             >
               <ZapIcon size={11} /> DEMO MODE · Exit
             </button>
           )}
           {voiceSupported && (
             <button onClick={toggleVoice} title={listening ? 'Stop' : 'Voice input'}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500,
-                padding: '3px 10px', borderRadius: 20, border: 'none', cursor: 'pointer',
-                background: listening ? '#fee2e2' : '#f3f4f6',
-                color: listening ? '#dc2626' : '#6b7280'
-              }}>
+              className={`voice-btn ${listening ? 'voice-btn-active' : ''}`}>
               {listening ? <MicOffIcon size={12} /> : <MicIcon size={12} />}
               {listening ? 'Listening…' : 'Voice'}
             </button>
@@ -283,14 +248,14 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Ollama offline banner (only when NOT in demo mode) */}
+      {/* Ollama offline banner */}
       {!ollamaConnected && !demoMode && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-amber-700 text-sm">
+        <div className="ollama-offline-banner">
+          <div className="ollama-offline-inner">
             <AlertCircleIcon size={15} />
-            <span>Ollama not running — start Ollama or <button onClick={activateDemoMode} style={{ fontWeight: 700, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', color: '#b45309' }}>try Demo Mode</button></span>
+            <span>Ollama not running — start Ollama or <button onClick={activateDemoMode} className="ollama-offline-demo-link">try Demo Mode</button></span>
           </div>
-          <button onClick={handleRetryConnection} className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium">
+          <button onClick={handleRetryConnection} className="ollama-offline-retry">
             <RefreshCwIcon size={12} />Retry
           </button>
         </div>
@@ -302,28 +267,18 @@ export default function Chat() {
           <div className="flex items-center justify-center h-full">
             <div className="max-w-lg text-center">
               <div className="text-5xl mb-4">🔒</div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Vault AI</h2>
-              <p className="text-gray-500 text-sm mb-8">Privacy-first AI for your files. Everything runs locally — no cloud, no tracking.</p>
+              <h2 className="welcome-title">Vault AI</h2>
+              <p className="welcome-subtitle">Privacy-first AI for your files. Everything runs locally — no cloud, no tracking.</p>
 
-              {/* Demo Mode CTA — prominent */}
-              <div style={{ background: 'linear-gradient(135deg, #EEF2FF, #F5F3FF)', border: '2px solid #C7D2FE', borderRadius: 16, padding: '24px', marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#4338ca', marginBottom: 6 }}>Try the full product instantly</div>
-                <div style={{ fontSize: 12, color: '#6366f1', marginBottom: 16 }}>No setup needed — explore every feature with realistic demo data</div>
-                <button
-                  onClick={activateDemoMode}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8, margin: '0 auto',
-                    padding: '10px 28px', borderRadius: 12, border: 'none',
-                    background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
-                    color: 'white', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                    boxShadow: '0 4px 15px rgba(79,70,229,0.35)'
-                  }}
-                >
+              {/* Demo Mode CTA */}
+              <div className="demo-cta-card">
+                <div className="demo-cta-heading">Try the full product instantly</div>
+                <div className="demo-cta-sub">No setup needed — explore every feature with realistic demo data</div>
+                <button onClick={activateDemoMode} className="demo-cta-btn">
                   <PlayIcon size={16} /> Launch Demo Mode
                 </button>
               </div>
 
-              {/* Ollama setup (secondary — upgrade path) */}
               <OllamaSetupGuide onRetry={handleRetryConnection} />
             </div>
           </div>
@@ -332,16 +287,15 @@ export default function Chat() {
         {/* ── Guided demo home (connected / demo mode) ── */}
         {!showWelcome && messages.length === 0 && (
           <div style={{ padding: '24px 20px', overflowY: 'auto', height: '100%' }}>
-            {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: '#111827', marginBottom: 4 }}>
+              <h2 className="welcome-home-title">
                 Welcome to Vault AI
                 {demoMode && (
-                  <span style={{ fontSize: 11, background: 'linear-gradient(135deg,#fef3c7,#fde68a)', color: '#92400e', padding: '2px 9px', borderRadius: 10, fontWeight: 700, marginLeft: 8, verticalAlign: 'middle', border: '1px solid #fbbf24' }}>⚡ DEMO</span>
+                  <span className="demo-badge">⚡ DEMO</span>
                 )}
               </h2>
-              <p style={{ fontSize: 12, color: '#6b7280' }}>
+              <p className="welcome-home-sub">
                 {demoMode ? 'All features are live with sample data — explore everything below.' : 'Your privacy-first AI file platform. All local.'}
               </p>
             </div>
@@ -349,39 +303,28 @@ export default function Chat() {
             {/* Feature panel cards */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
               {[
-                { tab: 'documents', emoji: '📄', title: 'Document Agent', desc: 'Summarize NDA, extract key points, detect PII', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-                { tab: 'research',  emoji: '🌐', title: 'Research Panel', desc: 'Web search + local docs, privately', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
-                { tab: 'generate',  emoji: '✨', title: 'Doc Generator',  desc: 'Create memos, reports, contracts from scratch', color: '#059669', bg: '#f0fdf4', border: '#bbf7d0' },
-                { tab: 'connectors',emoji: '🔌', title: 'Local Connectors',desc: 'Obsidian, SQLite, Git, email, bookmarks', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
+                { tab: 'documents', emoji: '📄', title: 'Document Agent',  desc: 'Summarize NDA, extract key points, detect PII',  color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+                { tab: 'research',  emoji: '🌐', title: 'Research Panel',  desc: 'Web search + local docs, privately',             color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+                { tab: 'generate',  emoji: '✨', title: 'Doc Generator',   desc: 'Create memos, reports, contracts from scratch',  color: '#059669', bg: '#f0fdf4', border: '#bbf7d0' },
+                { tab: 'connectors',emoji: '🔌', title: 'Local Connectors',desc: 'Obsidian, SQLite, Git, email, bookmarks',        color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
               ].map(({ tab, emoji, title, desc, color, bg, border }) => (
-                <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                  background: bg, border: `1.5px solid ${border}`, borderRadius: 12,
-                  padding: '12px 14px', textAlign: 'left', cursor: 'pointer',
-                  transition: 'transform 0.15s, box-shadow 0.15s'
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 6px 20px ${color}22`; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
+                <button key={tab} onClick={() => setActiveTab(tab)}
+                  className="feature-card"
+                  style={{ '--card-bg': bg, '--card-border': border, '--card-glow': color + '22' }}
+                >
                   <div style={{ fontSize: 20, marginBottom: 5 }}>{emoji}</div>
                   <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 3 }}>{title}</div>
-                  <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.4 }}>{desc}</div>
+                  <div className="feature-card-desc">{desc}</div>
                 </button>
               ))}
             </div>
 
             {/* Chat suggestions */}
             <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 7 }}>Or try in chat →</div>
+              <div className="suggestions-label">Or try in chat →</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                 {(demoMode ? DEMO_SUGGESTIONS : SUGGESTIONS).map(s => (
-                  <button key={s} onClick={() => setInput(s)} style={{
-                    padding: '7px 10px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb',
-                    fontSize: 11, color: '#374151', textAlign: 'left', cursor: 'pointer',
-                    transition: 'background 0.15s'
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#f9fafb'}>
-                    {s}
-                  </button>
+                  <button key={s} onClick={() => setInput(s)} className="suggestion-chip">{s}</button>
                 ))}
               </div>
             </div>
@@ -416,8 +359,8 @@ export default function Chat() {
       {/* Input bar */}
       <div className="chat-input-bar border-t p-3">
         {listening && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: '#dc2626', fontSize: 11 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#dc2626', animation: 'pulse 1s infinite' }} />
+          <div className="listening-indicator">
+            <span className="listening-dot" />
             Listening — speak now
           </div>
         )}
@@ -440,7 +383,7 @@ export default function Chat() {
           />
           {voiceSupported && (
             <button onClick={toggleVoice} title={listening ? 'Stop' : 'Voice input'}
-              style={{ padding: 8, borderRadius: 12, border: 'none', cursor: 'pointer', flexShrink: 0, background: listening ? '#fee2e2' : '#f3f4f6', color: listening ? '#dc2626' : '#6b7280' }}>
+              className={`voice-icon-btn ${listening ? 'voice-icon-btn-active' : ''}`}>
               {listening ? <MicOffIcon size={18} /> : <MicIcon size={18} />}
             </button>
           )}
@@ -450,8 +393,8 @@ export default function Chat() {
           </button>
         </div>
         {demoMode && (
-          <div style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center', marginTop: 5 }}>
-            Demo mode · AI responses simulated · <button onClick={() => window.open('https://ollama.com', '_blank')} style={{ color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', fontSize: 10 }}>Install Ollama for real AI</button>
+          <div className="demo-footer-note">
+            Demo mode · AI responses simulated · <button onClick={() => window.open('https://ollama.com', '_blank')} className="demo-footer-link">Install Ollama for real AI</button>
           </div>
         )}
       </div>
