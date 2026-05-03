@@ -1,44 +1,88 @@
 const axios = require('axios');
+const { OpenAIClient, OpenAIModelRouter } = require('./openaiClient');
 
 class OllamaClient {
   constructor(baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434') {
     this.baseUrl = baseUrl;
     this.client = axios.create({ baseURL: baseUrl, timeout: 120000 });
+    this._cloud = new OpenAIClient();
+    this._ollamaAvailable = null;
+    this._lastCheck = 0;
+    this.CHECK_TTL = 30000;
+  }
+
+  async _checkOllama() {
+    const now = Date.now();
+    if (now - this._lastCheck < this.CHECK_TTL && this._ollamaAvailable !== null) {
+      return this._ollamaAvailable;
+    }
+    try {
+      await this.client.get('/', { timeout: 2000 });
+      this._ollamaAvailable = true;
+    } catch {
+      this._ollamaAvailable = false;
+    }
+    this._lastCheck = now;
+    return this._ollamaAvailable;
   }
 
   async chat(model, messages, tools = [], stream = false) {
-    const body = { model, messages, stream };
-    if (tools && tools.length > 0) body.tools = tools;
-    const response = await this.client.post('/api/chat', body);
-    return response.data;
+    if (await this._checkOllama()) {
+      const body = { model, messages, stream };
+      if (tools && tools.length > 0) body.tools = tools;
+      const response = await this.client.post('/api/chat', body);
+      return response.data;
+    }
+    if (this._cloud.isConnected()) {
+      return this._cloud.chat(model, messages, tools, stream);
+    }
+    throw new Error('No AI model available. Please start Ollama and pull a model.');
   }
 
   async generate(model, prompt, stream = false) {
-    const response = await this.client.post('/api/generate', { model, prompt, stream });
-    return response.data;
+    if (await this._checkOllama()) {
+      const response = await this.client.post('/api/generate', { model, prompt, stream });
+      return response.data;
+    }
+    if (this._cloud.isConnected()) {
+      return this._cloud.generate(model, prompt, stream);
+    }
+    throw new Error('No AI model available. Please start Ollama and pull a model.');
   }
 
   async embeddings(model, text) {
-    const response = await this.client.post('/api/embeddings', { model, input: text });
-    return response.data.embeddings?.[0] || response.data.embedding || [];
+    if (await this._checkOllama()) {
+      const response = await this.client.post('/api/embeddings', { model, input: text });
+      return response.data.embeddings?.[0] || response.data.embedding || [];
+    }
+    throw new Error('No embedding model available. Start Ollama with nomic-embed-text for semantic search.');
   }
 
   async listModels() {
-    const response = await this.client.get('/api/tags');
-    return (response.data.models || []).map(m => ({
-      name: m.name,
-      size: m.size,
-      modified: m.modified_at
-    }));
+    if (await this._checkOllama()) {
+      const response = await this.client.get('/api/tags');
+      return (response.data.models || []).map(m => ({
+        name: m.name, size: m.size, modified: m.modified_at
+      }));
+    }
+    if (this._cloud.isConnected()) {
+      return this._cloud.listModels();
+    }
+    return [];
   }
 
   async isConnected() {
-    try {
-      await this.client.get('/');
-      return true;
-    } catch {
-      return false;
-    }
+    if (await this._checkOllama()) return true;
+    return this._cloud.isConnected();
+  }
+
+  async getProviderInfo() {
+    const ollamaUp = await this._checkOllama();
+    return {
+      ollama: ollamaUp,
+      cloud: this._cloud.isConnected(),
+      activeProvider: ollamaUp ? 'ollama' : (this._cloud.isConnected() ? 'openai' : null)
+    };
   }
 }
 
@@ -48,6 +92,7 @@ class ModelRouter {
     this._cache = null;
     this._cacheTime = 0;
     this.CACHE_TTL = 60000;
+    this._cloudRouter = new OpenAIModelRouter();
   }
 
   async getAvailableModels() {
@@ -80,35 +125,40 @@ class ModelRouter {
 
   async selectModel(taskType) {
     const models = await this.getAvailableModels();
-    const names = models.map(m => m.name);
 
-    const priorities = {
-      file_op:    ['llama3.2:3b', 'llama3.2', 'phi3:mini'],
-      doc_qa:     ['mistral:7b', 'llama3.1:8b', 'llama3:8b', 'llama3.2'],
-      generate:   ['llama3.1:8b', 'mistral:7b', 'llama3:8b', 'llama3.2'],
-      transform:  ['mistral:7b', 'llama3.1:8b', 'llama3.2'],
-      synthesize: ['llama3.1:8b', 'mistral:7b', 'llama3.2'],
-      extract:    ['mistral:7b', 'llama3.1:8b', 'llama3.2'],
-      embedding:  ['nomic-embed-text', 'mxbai-embed-large'],
-      vision:     ['llava:7b', 'llava', 'moondream'],
-      code:       ['qwen2.5-coder:7b', 'codellama:7b', 'mistral:7b', 'llama3.2']
-    };
+    const ollamaModels = models.filter(m => !['gpt-5-mini', 'gpt-5.4'].includes(m.name));
 
-    const list = priorities[taskType] || priorities.doc_qa;
-    for (const preferred of list) {
-      if (names.includes(preferred)) return preferred;
-      const partial = names.find(n => n.startsWith(preferred.split(':')[0]));
-      if (partial) return partial;
+    if (ollamaModels.length > 0) {
+      const names = ollamaModels.map(m => m.name);
+      const priorities = {
+        file_op:    ['llama3.2:3b', 'llama3.2', 'phi3:mini'],
+        doc_qa:     ['mistral:7b', 'llama3.1:8b', 'llama3:8b', 'llama3.2'],
+        generate:   ['llama3.1:8b', 'mistral:7b', 'llama3:8b', 'llama3.2'],
+        transform:  ['mistral:7b', 'llama3.1:8b', 'llama3.2'],
+        synthesize: ['llama3.1:8b', 'mistral:7b', 'llama3.2'],
+        extract:    ['mistral:7b', 'llama3.1:8b', 'llama3.2'],
+        embedding:  ['nomic-embed-text', 'mxbai-embed-large'],
+        vision:     ['llava:7b', 'llava', 'moondream'],
+        code:       ['qwen2.5-coder:7b', 'codellama:7b', 'mistral:7b', 'llama3.2']
+      };
+      const list = priorities[taskType] || priorities.doc_qa;
+      for (const preferred of list) {
+        if (names.includes(preferred)) return preferred;
+        const partial = names.find(n => n.startsWith(preferred.split(':')[0]));
+        if (partial) return partial;
+      }
+      if (taskType === 'vision') return null;
+      if (taskType === 'embedding') return names[0] || null;
+      return names.sort((a, b) => {
+        const sizeA = ollamaModels.find(m => m.name === a)?.size || 0;
+        const sizeB = ollamaModels.find(m => m.name === b)?.size || 0;
+        return sizeB - sizeA;
+      })[0] || null;
     }
 
+    if (taskType === 'embedding') return null;
     if (taskType === 'vision') return null;
-    if (taskType === 'embedding') return names[0] || null;
-
-    return names.sort((a, b) => {
-      const sizeA = models.find(m => m.name === a)?.size || 0;
-      const sizeB = models.find(m => m.name === b)?.size || 0;
-      return sizeB - sizeA;
-    })[0] || null;
+    return this._cloudRouter.selectModel(taskType);
   }
 }
 

@@ -9,10 +9,12 @@ const TASK_TYPES = ['file_op', 'doc_qa', 'generate', 'transform', 'synthesize', 
 
 router.get('/', async (req, res) => {
   try {
-    const connected = await ollama.isConnected();
-    if (!connected) {
-      return res.json({ models: [], connected: false });
+    const providerInfo = await ollama.getProviderInfo();
+
+    if (!providerInfo.ollama && !providerInfo.cloud) {
+      return res.json({ models: [], connected: false, provider: null });
     }
+
     const models = await ollama.listModels();
 
     const annotated = await Promise.all(models.map(async m => {
@@ -21,10 +23,16 @@ router.get('/', async (req, res) => {
         const selected = await modelRouter.selectModel(task);
         if (selected === m.name) roles.push(task);
       }
-      return { ...m, roles, status: 'available' };
+      return { ...m, roles, status: 'available', provider: providerInfo.activeProvider };
     }));
 
-    res.json({ models: annotated, connected: true });
+    res.json({
+      models: annotated,
+      connected: true,
+      provider: providerInfo.activeProvider,
+      ollama: providerInfo.ollama,
+      cloud: providerInfo.cloud
+    });
   } catch (err) {
     res.status(500).json({ error: err.message, connected: false });
   }
@@ -32,10 +40,16 @@ router.get('/', async (req, res) => {
 
 router.get('/status', async (req, res) => {
   try {
-    const connected = await ollama.isConnected();
-    res.json({ connected, baseUrl: 'http://localhost:11434' });
+    const providerInfo = await ollama.getProviderInfo();
+    res.json({
+      connected: providerInfo.ollama || providerInfo.cloud,
+      provider: providerInfo.activeProvider,
+      ollama: providerInfo.ollama,
+      cloud: providerInfo.cloud,
+      baseUrl: 'http://localhost:11434'
+    });
   } catch {
-    res.json({ connected: false, baseUrl: 'http://localhost:11434' });
+    res.json({ connected: false, provider: null, ollama: false, cloud: false });
   }
 });
 
