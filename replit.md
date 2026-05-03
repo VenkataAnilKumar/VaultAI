@@ -297,20 +297,33 @@ cd src/landing && npm install && npm run dev
 
 ---
 
-## Priority Roadmap
+## Roadmap Status
 
-| Priority | Feature | Notes |
-|----------|---------|-------|
-| 1 | **Drag-and-drop files into chat** | Most natural missing interaction |
-| 2 | **Local vs. cloud privacy indicator** | Resolves trust gap in the UI |
-| 3 | **Mobile-responsive layout** | Opens to much wider audience |
-| 4 | **Smoother Ollama onboarding** | OS auto-detect, styled copy buttons, live connection check |
-| 5 | **Settings page** | Model selection, working directory, API keys, theme |
-| 6 | **Export chat / summaries as PDF or Markdown** | Makes outputs usable outside the app |
-| 7 | **File watcher** | Monitor folder, auto-ingest new documents |
-| 8 | **Voice output (TTS)** | Text-to-speech on AI responses |
+### ✅ Tier 1 — Complete
+| # | Feature | Implementation |
+|---|---------|---------------|
+| 1 | **Drag-and-drop files into chat** | FileReader client-side for text/code files; chip UI in input bar; binary files redirect to Documents panel; paperclip button fallback |
+| 2 | **Local vs. cloud privacy indicator** | `activeProvider` in store; `PrivacyBadge` component in chat toolbar; green "Local" (Ollama) or yellow "Cloud" (OpenAI) |
+| 3 | **Mobile-responsive layout** | Sidebar drawer overlay on `< 768px`; bottom nav (Chat/Docs/Research/Skills/More); hamburger in header; safe-area padding |
+
+### ✅ Tier 2 — Complete
+| # | Feature | Implementation |
+|---|---------|---------------|
+| 4 | **Smoother Ollama onboarding** | OS-detected tabs (Mac/Windows/Linux) in Settings; one-click copy install commands; live Recheck button with spinner |
+| 5 | **Settings page** | Full `SettingsPanel`: model select dropdown, working directory input, OpenAI API key (localStorage), theme toggle, shortcuts |
+| 6 | **Export chat** | Export dropdown in toolbar; Markdown download (`.md`) + Print/PDF (opens styled HTML in new tab) |
+
+### ✅ Tier 3 — Complete
+| # | Feature | Implementation |
+|---|---------|---------------|
+| 7 | **File watcher** | `GET/POST /api/watch` routes (fs.watch, event queue, 8s poll); `FileWatcher.jsx` widget in sidebar footer |
+| 8 | **Voice output (TTS)** | `useTTS` hook using Web Speech API; "🔊 Read" button on every AI bubble; pulsing stop indicator |
+| 10 | **Usage dashboard** | `useStats` hook (localStorage); `UsageDashboard.jsx` with today/all-time tiles + 7-day bar chart |
+
+### 🔜 Remaining
+| # | Feature | Notes |
+|---|---------|-------|
 | 9 | **More connectors** | Notion, GitHub Issues, browser history |
-| 10 | **Usage dashboard** | Files processed, tools run, time saved |
 | 11 | **Scheduled summaries** | Daily digest of watched folder changes |
 
 ---
