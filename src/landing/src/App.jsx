@@ -11,8 +11,10 @@ import {
 /* ── App URL ── */
 const APP_URL = (() => {
   if (typeof window === 'undefined') return '/app';
-  const { hostname } = window.location;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') return 'http://localhost:5173';
+  const { hostname, port, protocol } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return `${protocol}//localhost:5173`;
+  // Replit dev proxy — landing on port 5000, app on port 5173
+  if (port && port !== '80' && port !== '443') return `${protocol}//${hostname}:5173`;
   return '/app';
 })();
 
