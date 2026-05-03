@@ -10,10 +10,12 @@ import {
 
 /* ── App URL ── */
 const APP_URL = (() => {
-  if (typeof window === 'undefined') return 'http://localhost:5173';
-  const { hostname, protocol } = window.location;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') return `${protocol}//localhost:5173`;
-  return `${protocol}//${hostname}:5173`;
+  if (typeof window === 'undefined') return '/app';
+  const { hostname, protocol, port } = window.location;
+  // Dev: landing runs on port 5000, app on port 5173
+  if (port === '5000' || port === '5173') return `${protocol}//${hostname}:5173`;
+  // Production: everything served from one domain, app is at /app
+  return '/app';
 })();
 
 /* ── Announcement bar ── */
