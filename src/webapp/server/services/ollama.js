@@ -55,7 +55,10 @@ class OllamaClient {
       const response = await this.client.post('/api/embeddings', { model, input: text });
       return response.data.embeddings?.[0] || response.data.embedding || [];
     }
-    throw new Error('No embedding model available. Start Ollama with nomic-embed-text for semantic search.');
+    if (this._cloud.isConnected()) {
+      return this._cloud.embeddings(model, text);
+    }
+    throw new Error('No embedding model available. Start Ollama with nomic-embed-text or enable cloud AI.');
   }
 
   async listModels() {
@@ -156,7 +159,6 @@ class ModelRouter {
       })[0] || null;
     }
 
-    if (taskType === 'embedding') return null;
     if (taskType === 'vision') return null;
     return this._cloudRouter.selectModel(taskType);
   }

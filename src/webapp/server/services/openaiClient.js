@@ -1,4 +1,5 @@
 const OpenAI = require('openai');
+const { embed: localEmbed } = require('./localEmbeddings');
 
 function getClient() {
   return new OpenAI({
@@ -14,7 +15,7 @@ const MODEL_MAP = {
   transform:  'gpt-5-mini',
   synthesize: 'gpt-5.4',
   extract:    'gpt-5-mini',
-  embedding:  null,
+  embedding:  'text-embedding-3-small',
   vision:     'gpt-5.4',
   code:       'gpt-5.4',
 };
@@ -83,7 +84,7 @@ class OpenAIClient {
   }
 
   async embeddings(model, text) {
-    throw new Error('Embeddings are not available in cloud fallback mode. Start Ollama locally for semantic search.');
+    return localEmbed(text);
   }
 
   async listModels() {
