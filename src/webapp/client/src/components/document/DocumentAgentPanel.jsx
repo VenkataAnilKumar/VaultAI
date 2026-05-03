@@ -4,7 +4,7 @@ import {
   ListIcon, SearchIcon, TagIcon, TrashIcon, SendIcon,
   CheckCircleIcon, AlertCircleIcon, ChevronRightIcon,
   FileIcon, Loader2Icon, XIcon, BookOpenIcon, ShieldAlertIcon,
-  UsersIcon, FolderSyncIcon, RefreshCwIcon, FolderOpenIcon, CloudUploadIcon
+  UsersIcon, FolderSyncIcon, RefreshCwIcon, FolderOpenIcon, UploadCloud
 } from 'lucide-react';
 import {
   ingestDocument, listDocuments, deleteDocument,
@@ -533,7 +533,7 @@ function DropZone({ onFiles, uploading, uploadProgress, compact = false }) {
         </div>
       ) : (
         <>
-          <CloudUploadIcon size={32} style={{ color: isDragging ? 'var(--accent)' : '#d1d5db', marginBottom: 8, transition: 'color 0.15s' }} />
+          <UploadCloud size={32} style={{ color: isDragging ? 'var(--accent)' : '#d1d5db', marginBottom: 8, transition: 'color 0.15s' }} />
           <div style={{ fontSize: 13, fontWeight: 600, color: isDragging ? 'var(--accent)' : '#374151', marginBottom: 4 }}>
             {isDragging ? 'Drop to upload' : 'Upload a document'}
           </div>
