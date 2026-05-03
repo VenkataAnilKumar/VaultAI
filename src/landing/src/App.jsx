@@ -9,7 +9,12 @@ import {
 } from 'lucide-react';
 
 /* ── App URL ── */
-const APP_URL = '/app';
+const APP_URL = (() => {
+  if (typeof window === 'undefined') return 'http://localhost:5173';
+  const { hostname, protocol } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return `${protocol}//localhost:5173`;
+  return `${protocol}//${hostname}:5173`;
+})();
 
 /* ── Announcement bar ── */
 function AnnouncementBar() {
