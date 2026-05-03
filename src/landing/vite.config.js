@@ -16,10 +16,14 @@ export default defineConfig({
       '/app': {
         target: 'http://localhost:5173',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/app/, ''),
+        ws: true,
       },
       '/api': {
         target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/favicon.ico': {
+        target: 'http://localhost:5173',
         changeOrigin: true,
       },
     },
