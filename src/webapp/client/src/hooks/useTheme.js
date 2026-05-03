@@ -13,7 +13,7 @@ function applyTheme(preference) {
 
 export function useTheme() {
   const [theme, setThemeState] = useState(() => {
-    return localStorage.getItem(STORAGE_KEY) || 'system';
+    return localStorage.getItem(STORAGE_KEY) || 'dark';
   });
 
   useEffect(() => {

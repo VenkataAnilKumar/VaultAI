@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vault AI</title>
+    <script>
+      (function() {
+        var stored = localStorage.getItem('vault-ai-theme') || 'dark';
+        var resolved = stored === 'system'
+          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : stored;
+        document.documentElement.setAttribute('data-theme', resolved);
+      })();
+    </script>
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
