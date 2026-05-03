@@ -75,6 +75,7 @@ waitForPort = 5000
 [deployment]
 run = ["sh", "-c", "cd src/webapp && npm run start"]
 build = ["sh", "-c", "cd src/webapp && npm install && npm run build"]
+deploymentTarget = "vm"
 
 [agent]
 expertMode = true
