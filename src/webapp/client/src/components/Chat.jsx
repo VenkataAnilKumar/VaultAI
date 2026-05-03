@@ -251,7 +251,7 @@ export default function Chat() {
     <div className="flex flex-col h-full">
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-gray-50/50">
+      <div className="chat-toolbar flex items-center justify-between px-4 py-2 border-b">
         <WorkflowToggle />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {demoMode && (
@@ -399,7 +399,7 @@ export default function Chat() {
         {isLoading && (
           <div className="flex items-start gap-3">
             <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs flex-shrink-0">AI</div>
-            <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+            <div className="chat-typing-bubble rounded-2xl px-4 py-3">
               <div className="flex gap-1">
                 {[0, 150, 300].map(d => (
                   <span key={d} className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
@@ -414,7 +414,7 @@ export default function Chat() {
       {pendingAction && <ConfirmDialog />}
 
       {/* Input bar */}
-      <div className="border-t border-gray-200 p-3 bg-white">
+      <div className="chat-input-bar border-t p-3">
         {listening && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: '#dc2626', fontSize: 11 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#dc2626', animation: 'pulse 1s infinite' }} />

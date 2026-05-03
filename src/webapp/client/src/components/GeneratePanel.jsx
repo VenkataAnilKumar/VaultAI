@@ -81,7 +81,7 @@ export default function GeneratePanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-gray-200 flex px-4">
+      <div className="panel-tab-bar border-b flex px-4">
         <TabButton active={tab === 'create'} onClick={() => { setTab('create'); setResult(null); setError(null); }}>Create</TabButton>
         <TabButton active={tab === 'transform'} onClick={() => { setTab('transform'); setResult(null); setError(null); }}>Transform</TabButton>
         <TabButton active={tab === 'synthesize'} onClick={() => { setTab('synthesize'); setResult(null); setError(null); }}>Synthesize</TabButton>

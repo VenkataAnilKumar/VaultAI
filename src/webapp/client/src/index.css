@@ -488,6 +488,79 @@ body {
 [data-theme="dark"] .demo-launch-btn { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
 [data-theme="dark"] .demo-launch-btn:hover { background: #252068; }
 
+/* ── Chat toolbar / input bar / typing bubble ── */
+.chat-toolbar {
+  background: rgba(248,246,252,0.6);
+  border-color: var(--border-light);
+}
+.chat-input-bar {
+  background: white;
+  border-color: var(--border-light);
+}
+.chat-typing-bubble {
+  background: white;
+  border: 1px solid var(--border);
+  box-shadow: var(--card-shadow);
+}
+[data-theme="dark"] .chat-toolbar {
+  background: rgba(255,255,255,0.02);
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .chat-input-bar {
+  background: var(--sidebar-bg) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .chat-typing-bubble {
+  background: #1A1A24 !important;
+  border-color: var(--border) !important;
+}
+
+/* ── Generic panel header / tab bar ── */
+.panel-header {
+  border-color: var(--border-light);
+}
+.panel-tab-bar {
+  border-color: var(--border-light);
+}
+[data-theme="dark"] .panel-header {
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .panel-tab-bar {
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .panel-header span,
+[data-theme="dark"] .panel-header .text-gray-800,
+[data-theme="dark"] .panel-header .text-gray-500 {
+  color: var(--text-1) !important;
+}
+
+/* ── Dark mode: all native inputs / textareas / selects ── */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background: #1A1A24 !important;
+  border-color: var(--border) !important;
+  color: var(--text-1) !important;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--text-3) !important;
+  opacity: 1;
+}
+[data-theme="dark"] input:focus:not([type="checkbox"]):not([type="radio"]),
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.15) !important;
+  outline: none !important;
+}
+[data-theme="dark"] input:disabled,
+[data-theme="dark"] textarea:disabled {
+  background: #0F0F14 !important;
+  color: var(--text-3) !important;
+}
+[data-theme="dark"] label { color: var(--text-2); }
+
 /* ══════════════════════════════════════
    SETTINGS PANEL
 ══════════════════════════════════════ */

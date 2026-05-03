@@ -36,7 +36,7 @@ export default function ConnectorsPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+      <div className="panel-header flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-2">
           <PlugIcon size={16} className="text-gray-500" />
           <span className="font-medium text-sm text-gray-800">Connectors</span>
