@@ -32,6 +32,77 @@ export const getModels = () => api.get('/models').then(r => r.data);
 export const sendChat = (data) => api.post('/chat', data).then(r => r.data);
 export const confirmAction = (data) => api.post('/chat/confirm', data).then(r => r.data);
 
+// Streaming chat — uses fetch + ReadableStream to receive SSE tokens in real time.
+// In demo mode it simulates token-by-token streaming from the pre-written demo response.
+// Returns an abort function.
+export function sendChatStream(data, { onToken, onTool, onDone, onError }) {
+  const demoMode = useStore.getState().demoMode;
+
+  if (demoMode) {
+    // Simulate streaming with demo data
+    let cancelled = false;
+    (async () => {
+      try {
+        await new Promise(r => setTimeout(r, 180 + Math.random() * 200));
+        const demoData = getDemoResponse('post', '/chat', JSON.stringify(data));
+        const fullText = demoData?.response || demoData?.error || 'Demo response';
+
+        // Emit word-by-word with a small delay to simulate streaming
+        const words = fullText.split(' ');
+        for (let i = 0; i < words.length; i++) {
+          if (cancelled) return;
+          const chunk = (i === 0 ? '' : ' ') + words[i];
+          onToken(chunk);
+          await new Promise(r => setTimeout(r, 18 + Math.random() * 22));
+        }
+        onDone({ toolsUsed: [], model: 'llama3.2 (demo)' });
+      } catch (err) {
+        if (!cancelled) onError(err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }
+
+  const ctrl = new AbortController();
+  (async () => {
+    try {
+      const res = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        signal: ctrl.signal,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep incomplete trailing line
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === 'token')        onToken(event.content);
+            else if (event.type === 'tool')    onTool(event);
+            else if (event.type === 'done')    onDone(event);
+            else if (event.type === 'confirmation') onDone({ ...event, isConfirmation: true });
+            else if (event.type === 'error')   onError(new Error(event.message));
+          } catch { /* skip malformed event */ }
+        }
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') onError(err);
+    }
+  })();
+  return () => ctrl.abort();
+}
+
 // Files
 export const listFiles = (path) => api.get('/files', { params: { path } }).then(r => r.data);
 export const readFile = (path) => api.get('/files/read', { params: { path } }).then(r => r.data);

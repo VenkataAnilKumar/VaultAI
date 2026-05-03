@@ -26,16 +26,67 @@ class OllamaClient {
     return this._ollamaAvailable;
   }
 
-  async chat(model, messages, tools = [], stream = false) {
+  async chat(model, messages, tools = []) {
     if (await this._checkOllama()) {
-      const body = { model, messages, stream };
+      const body = { model, messages, stream: false };
       if (tools && tools.length > 0) body.tools = tools;
       const response = await this.client.post('/api/chat', body);
       return response.data;
     }
-    if (this._cloud.isConnected()) {
-      return this._cloud.chat(model, messages, tools, stream);
+    if (this._cloud.isConnected()) return this._cloud.chat(model, messages, tools);
+    throw new Error('No AI model available. Please start Ollama and pull a model.');
+  }
+
+  // Streaming chat — streams tokens via onToken callback, returns assembled message.
+  async chatStream(model, messages, tools = [], onToken) {
+    if (await this._checkOllama()) {
+      const body = { model, messages, stream: true };
+      if (tools && tools.length > 0) body.tools = tools;
+
+      const response = await this.client.post('/api/chat', body, { responseType: 'stream' });
+
+      let content = '';
+      let toolCalls = [];
+
+      return new Promise((resolve, reject) => {
+        let buffer = '';
+        response.data.on('data', (chunk) => {
+          buffer += chunk.toString();
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // keep any incomplete trailing line
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const data = JSON.parse(line);
+              const msgContent = data.message?.content;
+              if (msgContent) {
+                content += msgContent;
+                onToken({ type: 'token', content: msgContent });
+              }
+              if (data.message?.tool_calls?.length) {
+                toolCalls = data.message.tool_calls;
+              }
+              if (data.done) {
+                resolve({
+                  message: {
+                    role: 'assistant',
+                    content,
+                    tool_calls: toolCalls.length > 0 ? toolCalls : undefined
+                  }
+                });
+              }
+            } catch { /* skip malformed lines */ }
+          }
+        });
+        response.data.on('error', reject);
+        response.data.on('end', () => {
+          // resolve in case 'done' flag was never sent
+          resolve({ message: { role: 'assistant', content, tool_calls: toolCalls.length > 0 ? toolCalls : undefined } });
+        });
+      });
     }
+
+    if (this._cloud.isConnected()) return this._cloud.chatStream(model, messages, tools, onToken);
     throw new Error('No AI model available. Please start Ollama and pull a model.');
   }
 
@@ -44,9 +95,7 @@ class OllamaClient {
       const response = await this.client.post('/api/generate', { model, prompt, stream });
       return response.data;
     }
-    if (this._cloud.isConnected()) {
-      return this._cloud.generate(model, prompt, stream);
-    }
+    if (this._cloud.isConnected()) return this._cloud.generate(model, prompt);
     throw new Error('No AI model available. Please start Ollama and pull a model.');
   }
 
@@ -55,22 +104,16 @@ class OllamaClient {
       const response = await this.client.post('/api/embeddings', { model, input: text });
       return response.data.embeddings?.[0] || response.data.embedding || [];
     }
-    if (this._cloud.isConnected()) {
-      return this._cloud.embeddings(model, text);
-    }
+    if (this._cloud.isConnected()) return this._cloud.embeddings(model, text);
     throw new Error('No embedding model available. Start Ollama with nomic-embed-text or enable cloud AI.');
   }
 
   async listModels() {
     if (await this._checkOllama()) {
       const response = await this.client.get('/api/tags');
-      return (response.data.models || []).map(m => ({
-        name: m.name, size: m.size, modified: m.modified_at
-      }));
+      return (response.data.models || []).map(m => ({ name: m.name, size: m.size, modified: m.modified_at }));
     }
-    if (this._cloud.isConnected()) {
-      return this._cloud.listModels();
-    }
+    if (this._cloud.isConnected()) return this._cloud.listModels();
     return [];
   }
 
@@ -99,9 +142,7 @@ class ModelRouter {
   }
 
   async getAvailableModels() {
-    if (this._cache && Date.now() - this._cacheTime < this.CACHE_TTL) {
-      return this._cache;
-    }
+    if (this._cache && Date.now() - this._cacheTime < this.CACHE_TTL) return this._cache;
     try {
       this._cache = await this.ollama.listModels();
       this._cacheTime = Date.now();
@@ -114,7 +155,7 @@ class ModelRouter {
   classifyTask(message, fileType = null) {
     if (fileType) {
       if (fileType.startsWith('image/')) return 'vision';
-      const codeExts = ['.js', '.ts', '.py', '.go', '.rs', '.java', '.cpp', '.cs', '.rb', '.php', '.sh'];
+      const codeExts = ['.js','.ts','.py','.go','.rs','.java','.cpp','.cs','.rb','.php','.sh'];
       if (codeExts.some(ext => fileType.endsWith(ext))) return 'code';
     }
     const msg = message.toLowerCase();
@@ -128,21 +169,19 @@ class ModelRouter {
 
   async selectModel(taskType) {
     const models = await this.getAvailableModels();
-
     const ollamaModels = models.filter(m => !['gpt-5-mini', 'gpt-5.4'].includes(m.name));
-
     if (ollamaModels.length > 0) {
       const names = ollamaModels.map(m => m.name);
       const priorities = {
-        file_op:    ['llama3.2:3b', 'llama3.2', 'phi3:mini'],
-        doc_qa:     ['mistral:7b', 'llama3.1:8b', 'llama3:8b', 'llama3.2'],
-        generate:   ['llama3.1:8b', 'mistral:7b', 'llama3:8b', 'llama3.2'],
-        transform:  ['mistral:7b', 'llama3.1:8b', 'llama3.2'],
-        synthesize: ['llama3.1:8b', 'mistral:7b', 'llama3.2'],
-        extract:    ['mistral:7b', 'llama3.1:8b', 'llama3.2'],
-        embedding:  ['nomic-embed-text', 'mxbai-embed-large'],
-        vision:     ['llava:7b', 'llava', 'moondream'],
-        code:       ['qwen2.5-coder:7b', 'codellama:7b', 'mistral:7b', 'llama3.2']
+        file_op:    ['llama3.2:3b','llama3.2','phi3:mini'],
+        doc_qa:     ['mistral:7b','llama3.1:8b','llama3:8b','llama3.2'],
+        generate:   ['llama3.1:8b','mistral:7b','llama3:8b','llama3.2'],
+        transform:  ['mistral:7b','llama3.1:8b','llama3.2'],
+        synthesize: ['llama3.1:8b','mistral:7b','llama3.2'],
+        extract:    ['mistral:7b','llama3.1:8b','llama3.2'],
+        embedding:  ['nomic-embed-text','mxbai-embed-large'],
+        vision:     ['llava:7b','llava','moondream'],
+        code:       ['qwen2.5-coder:7b','codellama:7b','mistral:7b','llama3.2']
       };
       const list = priorities[taskType] || priorities.doc_qa;
       for (const preferred of list) {
@@ -158,7 +197,6 @@ class ModelRouter {
         return sizeB - sizeA;
       })[0] || null;
     }
-
     if (taskType === 'vision') return null;
     return this._cloudRouter.selectModel(taskType);
   }
