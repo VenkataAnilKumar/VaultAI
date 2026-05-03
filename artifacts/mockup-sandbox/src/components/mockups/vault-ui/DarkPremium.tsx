@@ -70,16 +70,16 @@ export function DarkPremium() {
               <button
                 key={item.id}
                 onClick={() => setActiveNav(item.id)}
-                className={\`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all relative overflow-hidden group \${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all relative overflow-hidden group ${
                   isActive 
                     ? 'text-white font-medium bg-indigo-500/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]' 
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]'
-                }\`}
+                }`}
               >
                 {isActive && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-indigo-500 rounded-r-full shadow-[0_0_12px_rgba(99,102,241,0.8)]" />
                 )}
-                <Icon size={16} className={\`transition-colors \${isActive ? 'text-indigo-400' : 'group-hover:text-zinc-300'}\`} />
+                <Icon size={16} className={`transition-colors ${isActive ? 'text-indigo-400' : 'group-hover:text-zinc-300'}`} />
                 <span>{item.label}</span>
               </button>
             );
@@ -220,11 +220,11 @@ export function DarkPremium() {
                     </button>
                   </div>
                   <button 
-                    className={\`p-1.5 rounded-md transition-all duration-300 \${
+                    className={`p-1.5 rounded-md transition-all duration-300 ${
                       inputText.length > 0 
                         ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)]' 
                         : 'bg-white/5 text-zinc-600'
-                    }\`}
+                    }`}
                   >
                     <ArrowUp size={18} />
                   </button>
@@ -239,7 +239,7 @@ export function DarkPremium() {
       </div>
       
       {/* CSS for custom scrollbar embedded */}
-      <style>{\`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
         }
@@ -253,7 +253,7 @@ export function DarkPremium() {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(255, 255, 255, 0.2);
         }
-      \`}</style>
+      `}</style>
     </div>
   );
 }
