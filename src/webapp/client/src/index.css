@@ -1479,6 +1479,34 @@ body {
 
 .doc-library { flex: 1; overflow-y: auto; }
 .doc-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; text-align: center; }
+
+/* Drop zone — full (empty state) */
+.doc-dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  margin: 16px; padding: 40px 24px; text-align: center;
+  border: 2px dashed #d1d5db; border-radius: 14px;
+  background: #fafafa; cursor: pointer; transition: all 0.15s;
+  min-height: 180px;
+}
+.doc-dropzone:hover, .doc-dropzone.dragging {
+  border-color: var(--accent); background: var(--accent-bg);
+}
+/* Drop zone — compact (above list) */
+.doc-dropzone-compact {
+  display: flex; align-items: center; gap: 8px;
+  margin: 8px 8px 4px; padding: 8px 14px;
+  border: 1.5px dashed #d1d5db; border-radius: 10px;
+  background: #fafafa; cursor: pointer; font-size: 12px;
+  color: var(--text-2); transition: all 0.15s; font-weight: 500;
+}
+.doc-dropzone-compact:hover, .doc-dropzone-compact.dragging {
+  border-color: var(--accent); background: var(--accent-bg); color: var(--accent);
+}
+[data-theme="dark"] .doc-dropzone { background: rgba(255,255,255,0.03); border-color: var(--border); }
+[data-theme="dark"] .doc-dropzone:hover, [data-theme="dark"] .doc-dropzone.dragging { border-color: var(--accent); background: rgba(79,70,229,0.1); }
+[data-theme="dark"] .doc-dropzone-compact { background: rgba(255,255,255,0.03); border-color: var(--border); }
+[data-theme="dark"] .doc-dropzone-compact:hover, [data-theme="dark"] .doc-dropzone-compact.dragging { border-color: var(--accent); background: rgba(79,70,229,0.1); color: var(--accent); }
+
 .doc-list { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
 .doc-list-item {
   display: flex; align-items: center; gap: 10px;

@@ -216,6 +216,7 @@ export function getDemoResponse(method, url, bodyData) {
   if (path.startsWith('models'))        return RESPONSES['models'];
   if (path === 'documents' && method?.toLowerCase() === 'get') return RESPONSES['documents/list'];
   if (path === 'documents' && method?.toLowerCase() === 'delete') return { success: true };
+  if (path.startsWith('documents/upload'))       return RESPONSES['documents/ingest'](data);
   if (path.startsWith('documents/ingest'))       return RESPONSES['documents/ingest'](data);
   if (path.startsWith('documents/query'))        return RESPONSES['documents/query'](data);
   if (path.startsWith('documents/summarize')) {

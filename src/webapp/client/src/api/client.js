@@ -120,6 +120,17 @@ export const extractData = (data) => api.post('/generate/extract', data).then(r 
 export const autoRename = (filePath) => api.post('/generate/autorename', { filePath }).then(r => r.data);
 export const suggestOrganization = (directoryPath) => api.post('/generate/suggest-organization', { directoryPath }).then(r => r.data);
 
+// Documents — Upload from browser
+export const uploadDocument = (file, onProgress) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post('/documents/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
+    onUploadProgress: onProgress ? (e) => onProgress(Math.round((e.loaded * 100) / e.total)) : undefined,
+  }).then(r => r.data);
+};
+
 // Documents — Phase 1
 export const ingestDocument         = (filePath)         => api.post('/documents/ingest',    { filePath }).then(r => r.data);
 export const listDocuments          = ()                  => api.get('/documents').then(r => r.data);

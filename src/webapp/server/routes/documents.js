@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const crypto = require('crypto');
+const multer = require('multer');
 const { SUPPORTED_EXTENSIONS } = require('../services/docReader');
 const { OllamaClient, ModelRouter } = require('../services/ollama');
 const { EmbeddingsService } = require('../services/embeddings');
@@ -16,6 +18,27 @@ const vectorStore = new VectorStore();
 
 try { vectorStore.initialize(); } catch (e) { console.warn('Documents: vector store init:', e.message); }
 
+// Upload directory — persisted in home so uploads survive server restarts
+const UPLOAD_DIR = path.join(os.homedir(), '.vault-ai-uploads');
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e6);
+    cb(null, unique + path.extname(file.originalname));
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+    const allowed = ['pdf','docx','doc','txt','md','csv','xlsx','xls','json','yaml','yml','html','htm','eml','py','js','ts'];
+    cb(null, allowed.includes(ext));
+  }
+});
+
 // PII regex patterns (Phase 2)
 const PII_PATTERNS = {
   emails:    { re: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, label: 'Email Addresses' },
@@ -26,6 +49,41 @@ const PII_PATTERNS = {
   dates:     { re: /\b(?:\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\w+ \d{1,2},? \d{4})\b/g, label: 'Dates' },
   urls:      { re: /https?:\/\/[^\s<>"{}|\\^`\[\]]+/g, label: 'URLs' }
 };
+
+// ── POST /api/documents/upload ────────────────────────────────
+// Accept a file from the browser, save it, auto-ingest into vector store
+router.post('/upload', upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded or unsupported file type.' });
+  const savedPath = req.file.path;
+  const originalName = req.file.originalname;
+  try {
+    const doc = await docReader.extractText(savedPath);
+    if (!doc.text) {
+      fs.unlinkSync(savedPath);
+      return res.status(400).json({ error: 'Could not extract text from file. Ensure it is a readable document.' });
+    }
+    const stat = fs.statSync(savedPath);
+    const hash = crypto.createHash('md5').update(savedPath + stat.mtime.toISOString()).digest('hex');
+    const chunks = docReader.chunkText(doc.text);
+    for (const chunk of chunks) {
+      const embedding = await embeddingsService.getEmbedding(chunk.chunk);
+      vectorStore.upsertChunk(savedPath, chunk.index, chunk.chunk, embedding, hash);
+    }
+    res.json({
+      success: true,
+      filePath: savedPath,
+      originalName,
+      fileName: originalName,
+      chunks: chunks.length,
+      wordCount: doc.wordCount,
+      type: doc.type
+    });
+  } catch (err) {
+    try { fs.unlinkSync(savedPath); } catch {}
+    console.error('Upload ingest error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ── POST /api/documents/ingest ─────────────────────────────────
 router.post('/ingest', async (req, res) => {

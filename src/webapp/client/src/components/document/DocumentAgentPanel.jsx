@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   FileTextIcon, UploadIcon, MessageSquareIcon, AlignLeftIcon,
   ListIcon, SearchIcon, TagIcon, TrashIcon, SendIcon,
   CheckCircleIcon, AlertCircleIcon, ChevronRightIcon,
   FileIcon, Loader2Icon, XIcon, BookOpenIcon, ShieldAlertIcon,
-  UsersIcon, FolderSyncIcon, RefreshCwIcon
+  UsersIcon, FolderSyncIcon, RefreshCwIcon, FolderOpenIcon, CloudUploadIcon
 } from 'lucide-react';
 import {
   ingestDocument, listDocuments, deleteDocument,
   queryDocument, summarizeDocument, extractFromDocument, classifyDocument,
-  indexDocumentDirectory, detectPII, multiQueryDocuments, organizeDocuments
+  indexDocumentDirectory, detectPII, multiQueryDocuments, organizeDocuments,
+  uploadDocument
 } from '../../api/client.js';
 import useStore from '../../store/useStore.js';
 
@@ -482,21 +483,88 @@ function OrganizePanel({ documents }) {
   );
 }
 
+// ── Drop zone component ──────────────────────────────────────
+function DropZone({ onFiles, uploading, uploadProgress, compact = false }) {
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const onDragOver = useCallback((e) => { e.preventDefault(); setIsDragging(true); }, []);
+  const onDragLeave = useCallback(() => setIsDragging(false), []);
+  const onDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length) onFiles(files);
+  }, [onFiles]);
+
+  if (compact) {
+    return (
+      <div
+        className={`doc-dropzone-compact ${isDragging ? 'dragging' : ''}`}
+        onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
+        onClick={() => !uploading && fileInputRef.current?.click()}
+      >
+        <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.doc,.txt,.md,.csv,.xlsx,.xls,.json,.html,.py,.js,.ts" style={{ display: 'none' }} onChange={e => { const f = Array.from(e.target.files); if (f.length) onFiles(f); e.target.value = ''; }} />
+        {uploading ? (
+          <><Loader2Icon size={13} className="spin" style={{ color: 'var(--accent)' }} /><span>Uploading{uploadProgress > 0 ? ` ${uploadProgress}%` : '…'}</span></>
+        ) : (
+          <><UploadIcon size={13} /><span>Upload file</span><span style={{ color: '#9ca3af', fontSize: 11 }}>or drag & drop</span></>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`doc-dropzone ${isDragging ? 'dragging' : ''}`}
+      onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
+      onClick={() => !uploading && fileInputRef.current?.click()}
+    >
+      <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.doc,.txt,.md,.csv,.xlsx,.xls,.json,.html,.py,.js,.ts" style={{ display: 'none' }} onChange={e => { const f = Array.from(e.target.files); if (f.length) onFiles(f); e.target.value = ''; }} />
+      {uploading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <Loader2Icon size={28} className="spin" style={{ color: 'var(--accent)' }} />
+          <div style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>Processing document…</div>
+          {uploadProgress > 0 && (
+            <div style={{ width: 160, height: 4, background: '#e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.2s' }} />
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <CloudUploadIcon size={32} style={{ color: isDragging ? 'var(--accent)' : '#d1d5db', marginBottom: 8, transition: 'color 0.15s' }} />
+          <div style={{ fontSize: 13, fontWeight: 600, color: isDragging ? 'var(--accent)' : '#374151', marginBottom: 4 }}>
+            {isDragging ? 'Drop to upload' : 'Upload a document'}
+          </div>
+          <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>
+            Drag & drop or click to browse · PDF, DOCX, TXT, CSV, XLSX, MD…
+          </div>
+          <button className="doc-action-primary" onClick={e => { e.stopPropagation(); fileInputRef.current?.click(); }}>
+            <FolderOpenIcon size={14} /> Choose file
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Main panel ───────────────────────────────────────────────
 export default function DocumentAgentPanel() {
-  const { ollamaConnected } = useStore();
+  const { ollamaConnected, demoMode } = useStore();
 
   const [documents, setDocuments]       = useState([]);
   const [selectedDoc, setSelectedDoc]   = useState(null);
-  const [view, setView]                 = useState('library'); // 'library' | 'single' | 'multi' | 'organize'
+  const [view, setView]                 = useState('library');
   const [loading, setLoading]           = useState(false);
-  const [ingestLoading, setIngestLoading] = useState(false);
+  const [uploading, setUploading]       = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadQueue, setUploadQueue]   = useState([]);
   const [error, setError]               = useState(null);
-  const [filePath, setFilePath]         = useState('');
   const [dirPath, setDirPath]           = useState('');
-  const [showPathInput, setShowPathInput] = useState(false);
   const [showDirInput, setShowDirInput] = useState(false);
   const [dirResult, setDirResult]       = useState(null);
+  const [successMsg, setSuccessMsg]     = useState(null);
 
   useEffect(() => { fetchDocuments(); }, []);
 
@@ -513,19 +581,52 @@ export default function DocumentAgentPanel() {
     setError(null);
   }
 
-  async function handleIngest() {
-    if (!filePath.trim()) return;
-    setIngestLoading(true);
+  async function handleFiles(files) {
+    if (!files.length) return;
     setError(null);
-    try {
-      await ingestDocument(filePath.trim());
-      await fetchDocuments();
-      setFilePath('');
-      setShowPathInput(false);
-    } catch (err) {
-      setError(err.response?.data?.error || err.message);
-    } finally {
-      setIngestLoading(false);
+    setSuccessMsg(null);
+
+    // In demo mode, just fake the upload
+    if (demoMode) {
+      setUploading(true);
+      setUploadProgress(0);
+      await new Promise(r => setTimeout(r, 400));
+      setUploadProgress(60);
+      await new Promise(r => setTimeout(r, 400));
+      setUploadProgress(100);
+      await new Promise(r => setTimeout(r, 300));
+      setUploading(false);
+      setUploadProgress(0);
+      setSuccessMsg(`${files.length} file${files.length > 1 ? 's' : ''} uploaded (demo mode)`);
+      setTimeout(() => setSuccessMsg(null), 3000);
+      return;
+    }
+
+    setUploadQueue(files.map(f => f.name));
+    let uploaded = 0;
+    let failed = [];
+
+    for (const file of files) {
+      setUploading(true);
+      setUploadProgress(0);
+      try {
+        await uploadDocument(file, setUploadProgress);
+        uploaded++;
+      } catch (err) {
+        failed.push(`${file.name}: ${err.response?.data?.error || err.message}`);
+      }
+      setUploadProgress(0);
+    }
+
+    setUploading(false);
+    setUploadQueue([]);
+    await fetchDocuments();
+
+    if (failed.length) {
+      setError(failed.join(' | '));
+    } else {
+      setSuccessMsg(`${uploaded} file${uploaded > 1 ? 's' : ''} indexed successfully`);
+      setTimeout(() => setSuccessMsg(null), 3000);
     }
   }
 
@@ -614,50 +715,28 @@ export default function DocumentAgentPanel() {
               </button>
             </>
           )}
-          <button className="doc-header-btn" onClick={() => setShowDirInput(v => !v)} title="Index directory">
-            <FolderSyncIcon size={13} />
-          </button>
-          <button className="doc-add-btn" onClick={() => setShowPathInput(v => !v)}>
-            <UploadIcon size={13} /> Add file
+          <button className="doc-header-btn" onClick={() => setShowDirInput(v => !v)} title="Index directory by path">
+            <FolderOpenIcon size={13} /> Dir
           </button>
         </div>
       </div>
 
-      {/* Error */}
+      {/* Notifications */}
       {error && <div className="doc-error"><AlertCircleIcon size={14} />{error}<button onClick={() => setError(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer' }}><XIcon size={12} /></button></div>}
+      {successMsg && <div className="doc-success"><CheckCircleIcon size={14} />{successMsg}<button onClick={() => setSuccessMsg(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer' }}><XIcon size={12} /></button></div>}
+      {dirResult && <div className="doc-success"><CheckCircleIcon size={14} />Indexed {dirResult.indexed} of {dirResult.total} files<button onClick={() => setDirResult(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer' }}><XIcon size={12} /></button></div>}
 
-      {/* Dir result */}
-      {dirResult && (
-        <div className="doc-success">
-          <CheckCircleIcon size={14} />
-          Indexed {dirResult.indexed} of {dirResult.total} files
-          <button onClick={() => setDirResult(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer' }}><XIcon size={12} /></button>
-        </div>
-      )}
-
-      {/* File ingest input */}
-      {showPathInput && (
-        <div className="doc-ingest-row">
-          <FileIcon size={13} style={{ color: '#9ca3af', flexShrink: 0 }} />
-          <input
-            value={filePath}
-            onChange={e => setFilePath(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleIngest()}
-            placeholder="/path/to/file.pdf"
-            className="doc-path-input"
-            autoFocus
-          />
-          <button onClick={handleIngest} disabled={!filePath.trim() || ingestLoading} className="doc-ingest-btn">
-            {ingestLoading ? <Loader2Icon size={13} className="spin" /> : 'Ingest'}
-          </button>
-          <button onClick={() => setShowPathInput(false)} className="doc-cancel-btn"><XIcon size={13} /></button>
+      {/* Upload queue indicator */}
+      {uploadQueue.length > 0 && (
+        <div style={{ padding: '4px 12px', fontSize: 11, color: '#6b7280', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+          Uploading: {uploadQueue.join(', ')}
         </div>
       )}
 
       {/* Dir index input */}
       {showDirInput && (
         <div className="doc-ingest-row">
-          <FolderSyncIcon size={13} style={{ color: '#9ca3af', flexShrink: 0 }} />
+          <FolderOpenIcon size={13} style={{ color: '#9ca3af', flexShrink: 0 }} />
           <input
             value={dirPath}
             onChange={e => setDirPath(e.target.value)}
@@ -676,34 +755,30 @@ export default function DocumentAgentPanel() {
       {/* Document library */}
       <div className="doc-library">
         {documents.length === 0 ? (
-          <div className="doc-empty">
-            <FileTextIcon size={36} style={{ color: '#d1d5db', margin: '0 auto 12px' }} />
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#6b7280', marginBottom: 4 }}>No documents indexed</div>
-            <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 16 }}>Add files to start asking questions, summarizing, and extracting data.</div>
-            <button className="doc-action-primary" onClick={() => setShowPathInput(true)}>
-              <UploadIcon size={14} /> Add first document
-            </button>
-          </div>
+          <DropZone onFiles={handleFiles} uploading={uploading} uploadProgress={uploadProgress} />
         ) : (
-          <div className="doc-list">
-            {documents.map(doc => (
-              <button key={doc.filePath} className="doc-list-item" onClick={() => selectDoc(doc)}>
-                <ExtBadge ext={doc.ext} />
-                <div className="doc-list-info">
-                  <div className="doc-list-name">{doc.fileName}</div>
-                  <div className="doc-list-meta">{doc.chunkCount} chunks · {doc.filePath}</div>
-                </div>
-                <ChevronRightIcon size={14} style={{ color: '#d1d5db', flexShrink: 0 }} />
-                <button
-                  onClick={(e) => handleDelete(doc, e)}
-                  className="doc-delete-btn"
-                  title="Remove from index"
-                >
-                  <TrashIcon size={12} />
+          <>
+            <DropZone onFiles={handleFiles} uploading={uploading} uploadProgress={uploadProgress} compact />
+            <div className="doc-list">
+              {documents.map(doc => (
+                <button key={doc.filePath} className="doc-list-item" onClick={() => selectDoc(doc)}>
+                  <ExtBadge ext={doc.ext} />
+                  <div className="doc-list-info">
+                    <div className="doc-list-name">{doc.fileName}</div>
+                    <div className="doc-list-meta">{doc.chunkCount} chunk{doc.chunkCount !== 1 ? 's' : ''} · {doc.filePath.length > 40 ? '…' + doc.filePath.slice(-38) : doc.filePath}</div>
+                  </div>
+                  <ChevronRightIcon size={14} style={{ color: '#d1d5db', flexShrink: 0 }} />
+                  <button
+                    onClick={(e) => handleDelete(doc, e)}
+                    className="doc-delete-btn"
+                    title="Remove from index"
+                  >
+                    <TrashIcon size={12} />
+                  </button>
                 </button>
-              </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
