@@ -22,6 +22,7 @@ const connectorsRoutes = require('./routes/connectors');
 const mcpRoutes        = require('./routes/mcp');
 const researchRoutes   = require('./routes/research');
 const skillsRoutes     = require('./routes/skills');
+const watchRoutes      = require('./routes/watch');
 
 app.use('/api/chat',       chatRoutes);
 app.use('/api/files',      filesRoutes);
@@ -34,6 +35,7 @@ app.use('/api/connectors', connectorsRoutes);
 app.use('/api/mcp',        mcpRoutes);
 app.use('/api/research',   researchRoutes);
 app.use('/api/skills',     skillsRoutes);
+app.use('/api/watch',      watchRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

@@ -6,6 +6,8 @@ const useStore = create((set) => ({
   workingDirectory: '',
   availableModels: [],
   ollamaConnected: false,
+  activeProvider: null,     // 'ollama' | 'openai' | null
+  selectedModel: '',        // user-selected chat model
   isLoading: false,
   pendingAction: null,
   indexedDirectories: [],
@@ -24,7 +26,7 @@ const useStore = create((set) => ({
   externalMCPServers: [],
   externalMCPTools: [],
 
-  // Demo mode (Phase 5 — hackathon)
+  // Demo mode
   demoMode: false,
 
   // Chat actions
@@ -38,6 +40,8 @@ const useStore = create((set) => ({
   setWorkingDirectory: (dir) => set({ workingDirectory: dir }),
   setModels: (models) => set({ availableModels: models }),
   setOllamaConnected: (connected) => set({ ollamaConnected: connected }),
+  setActiveProvider: (provider) => set({ activeProvider: provider }),
+  setSelectedModel: (model) => set({ selectedModel: model }),
   setLoading: (loading) => set({ isLoading: loading }),
   setPendingAction: (action) => set({ pendingAction: action }),
   clearPendingAction: () => set({ pendingAction: null }),

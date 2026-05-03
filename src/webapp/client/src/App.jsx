@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback, useMemo, useRef, Suspense, laz
 import {
   LockIcon, MessageSquareIcon, SparklesIcon, PlugIcon, ServerIcon,
   PlusIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, CpuIcon,
-  TrashIcon, SettingsIcon, ZapIcon, FileTextIcon, GlobeIcon, PlayIcon
+  TrashIcon, SettingsIcon, ZapIcon, FileTextIcon, GlobeIcon, PlayIcon,
+  MenuIcon, BarChart2Icon, EyeIcon
 } from 'lucide-react';
 import FileBrowser from './components/FileBrowser.jsx';
 import Chat from './components/Chat.jsx';
@@ -11,6 +12,8 @@ import StatusBar from './components/StatusBar.jsx';
 import SettingsPanel from './components/SettingsPanel.jsx';
 import SessionHistory from './components/SessionHistory.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import UsageDashboard from './components/UsageDashboard.jsx';
+import FileWatcher from './components/FileWatcher.jsx';
 import { useTheme } from './hooks/useTheme.js';
 import { useSessionHistory } from './hooks/useSessionHistory.js';
 import useStore from './store/useStore.js';
@@ -41,6 +44,14 @@ const NAV_ITEMS = [
   { id: 'mcp',        label: 'MCP Tools',  icon: ServerIcon        },
 ];
 
+// Bottom nav shows 4 most-used tabs on mobile
+const BOTTOM_NAV = [
+  { id: 'chat',      label: 'Chat',      icon: MessageSquareIcon },
+  { id: 'documents', label: 'Docs',      icon: FileTextIcon      },
+  { id: 'research',  label: 'Research',  icon: GlobeIcon         },
+  { id: 'skills',    label: 'Skills',    icon: ZapIcon           },
+];
+
 const TAB_LABELS = {
   chat: 'Chat', documents: 'Documents', research: 'Research',
   skills: 'Skills', generate: 'Generate', connectors: 'Connectors', mcp: 'MCP Tools',
@@ -48,24 +59,36 @@ const TAB_LABELS = {
 
 export default function App() {
   const {
-    activeTab, setActiveTab, setOllamaConnected, setModels,
+    activeTab, setActiveTab, setOllamaConnected, setModels, setActiveProvider,
     setWorkingDirectory, ollamaConnected, availableModels,
     clearMessages, messages, demoMode, setDemoMode
   } = useStore();
 
   const { theme, setTheme } = useTheme();
   const { sessions, saveSession, deleteSession } = useSessionHistory();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen]     = useState(true);
+  const [settingsOpen, setSettingsOpen]   = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
+  const [showUsage, setShowUsage]         = useState(false);
+  const [showWatcher, setShowWatcher]     = useState(false);
 
-  // Use ref to avoid stale closure in the polling interval
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  // Close sidebar on mobile when switching tabs
+  useEffect(() => { if (isMobile) setSidebarOpen(false); }, [isMobile]);
+
   const demoModeRef = useRef(demoMode);
   useEffect(() => { demoModeRef.current = demoMode; }, [demoMode]);
 
   function activateDemoMode() {
     setDemoMode(true);
     setOllamaConnected(true);
+    setActiveProvider('openai');
     setModels([{ name: 'llama3.2 (demo)' }, { name: 'nomic-embed-text (demo)' }]);
   }
 
@@ -75,6 +98,7 @@ export default function App() {
         const status = await checkOllamaStatus();
         setOllamaConnected(status.connected);
         if (status.connected) {
+          setActiveProvider(status.provider || null);
           const data = await getModels();
           setModels(data.models || []);
         } else {
@@ -96,8 +120,11 @@ export default function App() {
 
     const iv = setInterval(async () => {
       if (demoModeRef.current) return;
-      try { const s = await checkOllamaStatus(); setOllamaConnected(s.connected); }
-      catch { setOllamaConnected(false); }
+      try {
+        const s = await checkOllamaStatus();
+        setOllamaConnected(s.connected);
+        if (s.provider) setActiveProvider(s.provider);
+      } catch { setOllamaConnected(false); }
     }, 30000);
     return () => clearInterval(iv);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -128,12 +155,19 @@ export default function App() {
     clearMessages();
     const store = useStore.getState();
     session.messages.forEach(m => store.addMessage(m));
+    if (isMobile) setSidebarOpen(false);
   }
 
   function handleNewChat() {
     setActiveTab('chat');
     clearMessages();
     setActiveSessionId(null);
+    if (isMobile) setSidebarOpen(false);
+  }
+
+  function handleNavItem(id) {
+    setActiveTab(id);
+    if (isMobile) setSidebarOpen(false);
   }
 
   const renderPanel = useMemo(() => {
@@ -151,11 +185,17 @@ export default function App() {
 
   const showFiles   = activeTab === 'chat' || activeTab === 'generate';
   const showThreads = activeTab === 'chat' && sessions.length > 0;
+  const sidebarVisible = sidebarOpen && (!isMobile || sidebarOpen);
 
   return (
     <div className="app-shell">
-      {sidebarOpen && (
-        <aside className="sidebar">
+      {/* Mobile backdrop */}
+      {isMobile && sidebarOpen && (
+        <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {sidebarVisible && (
+        <aside className={`sidebar ${isMobile ? 'sidebar-mobile' : ''}`}>
           <div className="sidebar-traffic">
             <div className="traffic-lights">
               <span className="tl tl-red" /><span className="tl tl-yellow" /><span className="tl tl-green" />
@@ -173,7 +213,7 @@ export default function App() {
 
           <nav className="sidebar-nav">
             {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => setActiveTab(id)}
+              <button key={id} onClick={() => handleNavItem(id)}
                 className={`nav-item ${activeTab === id ? 'nav-item-active' : ''}`}>
                 <Icon size={14} /><span>{label}</span>
               </button>
@@ -188,26 +228,46 @@ export default function App() {
                 onSelect={handleSelectSession} onDelete={deleteSession} />
             </div>
           )}
-
           {showFiles && !showThreads && (
             <div className="sidebar-files"><FileBrowser /></div>
           )}
 
           <div className="sidebar-footer">
+            {/* File Watcher widget */}
+            {showWatcher && (
+              <FileWatcher defaultDir={useStore.getState().workingDirectory} />
+            )}
+
+            {/* Usage Dashboard widget */}
+            {showUsage && (
+              <UsageDashboard onClose={() => setShowUsage(false)} />
+            )}
+
             {!demoMode && !ollamaConnected && (
               <button className="demo-launch-btn" onClick={activateDemoMode}>
                 <PlayIcon size={12} /> Try Demo Mode
               </button>
             )}
 
-            <div className="settings-anchor">
-              <button className={`nav-item ${settingsOpen ? 'nav-item-active' : ''}`}
-                onClick={() => setSettingsOpen(v => !v)}>
-                <SettingsIcon size={14} /><span>Settings</span>
+            {/* Quick-action row: Watcher + Stats + Settings */}
+            <div className="sidebar-quick-row">
+              <button className={`sidebar-quick-btn ${showWatcher ? 'sidebar-quick-btn-active' : ''}`}
+                onClick={() => setShowWatcher(v => !v)} title="File Watcher">
+                <EyeIcon size={12} />
               </button>
-              {settingsOpen && (
-                <SettingsPanel theme={theme} setTheme={setTheme} onClose={() => setSettingsOpen(false)} />
-              )}
+              <button className={`sidebar-quick-btn ${showUsage ? 'sidebar-quick-btn-active' : ''}`}
+                onClick={() => { setShowUsage(v => !v); setShowWatcher(false); }} title="Usage stats">
+                <BarChart2Icon size={12} />
+              </button>
+              <div className="settings-anchor" style={{ flex: 1 }}>
+                <button className={`nav-item ${settingsOpen ? 'nav-item-active' : ''}`}
+                  onClick={() => setSettingsOpen(v => !v)}>
+                  <SettingsIcon size={14} /><span>Settings</span>
+                </button>
+                {settingsOpen && (
+                  <SettingsPanel theme={theme} setTheme={setTheme} onClose={() => setSettingsOpen(false)} />
+                )}
+              </div>
             </div>
 
             <div className="model-status">
@@ -221,7 +281,7 @@ export default function App() {
         </aside>
       )}
 
-      <main className="main-area">
+      <main className={`main-area ${isMobile ? 'main-area-mobile' : ''}`}>
         <div className="content-card">
           {demoMode && (
             <div style={{
@@ -233,16 +293,14 @@ export default function App() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, flexWrap: 'wrap' }}>
                 <span style={{ color: '#fff', fontWeight: 700 }}>⚡ Live Demo Mode</span>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div className="demo-banner-tags">
                   {['All 6 panels active', 'Sample documents loaded', 'Real AI responses simulated'].map(t => (
-                    <span key={t} style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.12)', padding: '2px 8px', borderRadius: 20, fontWeight: 500 }}>{t}</span>
+                    <span key={t} className="demo-banner-tag">{t}</span>
                   ))}
                 </div>
               </div>
-              <button
-                onClick={() => { setDemoMode(false); setOllamaConnected(false); setModels([]); }}
-                style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
-              >
+              <button onClick={() => { setDemoMode(false); setOllamaConnected(false); setModels([]); setActiveProvider(null); }}
+                style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
                 Exit
               </button>
             </div>
@@ -250,9 +308,9 @@ export default function App() {
 
           <div className="card-header">
             <div className="card-header-left">
-              {!sidebarOpen && (
+              {(!sidebarOpen || isMobile) && (
                 <button className="icon-btn" onClick={() => setSidebarOpen(true)} title="Open sidebar (⌘B)">
-                  <PanelLeftOpenIcon size={15} />
+                  {isMobile ? <MenuIcon size={17} /> : <PanelLeftOpenIcon size={15} />}
                 </button>
               )}
               <LockIcon size={13} style={{ color: 'var(--accent)' }} />
@@ -275,6 +333,24 @@ export default function App() {
           </div>
           <StatusBar />
         </div>
+
+        {/* Bottom nav — mobile only */}
+        {isMobile && (
+          <nav className="bottom-nav">
+            {BOTTOM_NAV.map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => handleNavItem(id)}
+                className={`bottom-nav-item ${activeTab === id ? 'bottom-nav-item-active' : ''}`}>
+                <Icon size={20} />
+                <span>{label}</span>
+              </button>
+            ))}
+            <button onClick={() => setSidebarOpen(v => !v)}
+              className={`bottom-nav-item ${sidebarOpen ? 'bottom-nav-item-active' : ''}`}>
+              <MenuIcon size={20} />
+              <span>More</span>
+            </button>
+          </nav>
+        )}
       </main>
     </div>
   );

@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   SendIcon, AlertCircleIcon, RefreshCwIcon, MicIcon, MicOffIcon,
-  PlayIcon, ZapIcon, CopyIcon, CheckIcon, ExternalLinkIcon, WrenchIcon, XIcon
+  PlayIcon, ZapIcon, WrenchIcon, XIcon, PaperclipIcon, FileTextIcon,
+  ShieldCheckIcon, CloudIcon, DownloadIcon, ChevronDownIcon
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import useStore from '../store/useStore.js';
@@ -11,7 +12,28 @@ import WorkflowToggle from './agents/WorkflowToggle.jsx';
 import AgentWorkflowPanel from './agents/AgentWorkflowPanel.jsx';
 import MCPToolBadge from './mcp/MCPToolBadge.jsx';
 
-// ── Copy-able terminal command ──────────────────────────────────
+// ── Text file extensions handled client-side ────────────────────
+const TEXT_EXTS = new Set([
+  '.txt','.md','.js','.ts','.jsx','.tsx','.py','.go','.rs','.java',
+  '.cpp','.c','.h','.css','.html','.json','.yaml','.yml','.xml',
+  '.csv','.sh','.rb','.php','.sql','.toml','.ini','.env',
+]);
+
+// ── Privacy badge ───────────────────────────────────────────────
+function PrivacyBadge({ provider, demoMode }) {
+  if (demoMode) return null;
+  if (!provider) return null;
+  const isLocal = provider === 'ollama';
+  return (
+    <span className={`privacy-badge ${isLocal ? 'privacy-badge-local' : 'privacy-badge-cloud'}`}>
+      {isLocal
+        ? <><ShieldCheckIcon size={10} /> Local</>
+        : <><CloudIcon size={10} /> Cloud</>}
+    </span>
+  );
+}
+
+// ── Ollama Setup Guide ──────────────────────────────────────────
 function CmdLine({ cmd }) {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef(null);
@@ -27,13 +49,12 @@ function CmdLine({ cmd }) {
     <div className="cmdline-block">
       <span style={{ flex: 1 }}>{cmd}</span>
       <button onClick={copy} title="Copy" className="cmdline-copy-btn">
-        {copied ? <><CheckIcon size={12} /> copied</> : <CopyIcon size={12} />}
+        {copied ? 'copied ✓' : '⎘'}
       </button>
     </div>
   );
 }
 
-// ── Ollama Setup Guide ──────────────────────────────────────────
 function OllamaSetupGuide({ onRetry }) {
   const [open, setOpen] = useState(false);
   return (
@@ -50,7 +71,7 @@ function OllamaSetupGuide({ onRetry }) {
           <div className="ollama-guide-step">
             <div className="ollama-guide-step-title">Step 1 — Install Ollama</div>
             <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer" className="ollama-guide-link">
-              <ExternalLinkIcon size={11} /> Download Ollama →
+              Download Ollama →
             </a>
           </div>
           <div className="ollama-guide-step">
@@ -76,7 +97,7 @@ function OllamaSetupGuide({ onRetry }) {
   );
 }
 
-// ── Live streaming message bubble ──────────────────────────────
+// ── Streaming bubble ────────────────────────────────────────────
 function StreamingBubble({ content, toolsRunning }) {
   return (
     <div className="flex items-start gap-3">
@@ -86,8 +107,7 @@ function StreamingBubble({ content, toolsRunning }) {
           <div className="stream-tool-row">
             {toolsRunning.map(t => (
               <span key={t} className="stream-tool-chip">
-                <WrenchIcon size={10} className="stream-tool-spin" />
-                {t.replace(/_/g, ' ')}
+                <WrenchIcon size={10} className="stream-tool-spin" />{t.replace(/_/g, ' ')}
               </span>
             ))}
           </div>
@@ -113,14 +133,37 @@ function StreamingBubble({ content, toolsRunning }) {
   );
 }
 
-// ── MessageBubble (imported inline to avoid circular dep on streaming state) ──
-function MessageBubble({ message }) {
+// ── TTS helper ─────────────────────────────────────────────────
+const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+function useTTS() {
+  const [speakingId, setSpeakingId] = useState(null);
+
+  function speak(id, text) {
+    if (!ttsSupported) return;
+    if (speakingId === id) { window.speechSynthesis.cancel(); setSpeakingId(null); return; }
+    window.speechSynthesis.cancel();
+    const plain = text.replace(/#{1,6}\s/g,'').replace(/[*_`~>]/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1');
+    const utt = new SpeechSynthesisUtterance(plain);
+    utt.rate = 0.95; utt.pitch = 1;
+    utt.onstart = () => setSpeakingId(id);
+    utt.onend   = () => setSpeakingId(null);
+    utt.onerror = () => setSpeakingId(null);
+    window.speechSynthesis.speak(utt);
+  }
+  function stop() { window.speechSynthesis.cancel(); setSpeakingId(null); }
+  return { speakingId, speak, stop };
+}
+
+// ── MessageBubble ───────────────────────────────────────────────
+function MessageBubble({ message, speakingId, onSpeak }) {
   const [showTools, setShowTools] = useState(false);
-  const isUser = message.role === 'user';
-  if (isUser) {
+  const isSpeaking = speakingId === message.id;
+
+  if (message.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-lg bg-blue-600 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm">
+        <div className="max-w-lg bg-blue-600 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm whitespace-pre-wrap break-words">
           {message.content}
         </div>
       </div>
@@ -139,8 +182,16 @@ function MessageBubble({ message }) {
           {message.model && <span className="msg-model-badge">{message.model}</span>}
           {message.toolsUsed?.length > 0 && (
             <button onClick={() => setShowTools(v => !v)} className="msg-tools-btn flex items-center gap-1">
-              <WrenchIcon size={11} />
-              {message.toolsUsed.length} tool{message.toolsUsed.length > 1 ? 's' : ''}
+              <WrenchIcon size={11} />{message.toolsUsed.length} tool{message.toolsUsed.length !== 1 ? 's' : ''}
+            </button>
+          )}
+          {ttsSupported && (
+            <button onClick={() => onSpeak(message.id, message.content)}
+              className={`msg-tts-btn ${isSpeaking ? 'msg-tts-btn-active' : ''}`}
+              title={isSpeaking ? 'Stop speaking' : 'Read aloud'}>
+              {isSpeaking
+                ? <><span className="tts-pulse" />Stop</>
+                : <><span style={{ fontSize: 11 }}>🔊</span> Read</>}
             </button>
           )}
         </div>
@@ -161,29 +212,37 @@ function MessageBubble({ message }) {
   );
 }
 
-// ── Main Chat component ─────────────────────────────────────────
+// ── Main Chat ───────────────────────────────────────────────────
 export default function Chat() {
   const {
     messages, addMessage, workingDirectory, ollamaConnected, setOllamaConnected,
     isLoading, setLoading, pendingAction, setPendingAction, workflowMode, externalMCPTools,
-    demoMode, setDemoMode, setModels, setActiveTab
+    demoMode, setDemoMode, setModels, setActiveTab, activeProvider, setActiveProvider
   } = useStore();
 
-  const [input, setInput]           = useState('');
-  const [listening, setListening]   = useState(false);
+  const [input, setInput]         = useState('');
+  const [listening, setListening] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
 
   // Streaming state
   const [streamContent, setStreamContent] = useState('');
-  const [streamTools, setStreamTools]     = useState([]);   // tool names currently running
+  const [streamTools, setStreamTools]     = useState([]);
   const [isStreaming, setIsStreaming]      = useState(false);
   const abortStreamRef = useRef(null);
+
+  // TTS
+  const { speakingId, speak } = useTTS();
+
+  // Drag-and-drop state
+  const [isDragging, setIsDragging]       = useState(false);
+  const [attachedFile, setAttachedFile]   = useState(null);
+  const dragCountRef  = useRef(0);
+  const chatAreaRef   = useRef(null);
 
   const messagesEndRef = useRef(null);
   const inputRef       = useRef(null);
   const recognitionRef = useRef(null);
 
-  // Auto-scroll on new content
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamContent]);
@@ -216,8 +275,36 @@ export default function Chat() {
     else { setInput(''); recognitionRef.current.start(); setListening(true); }
   }
 
+  // ── Drag-and-drop handlers ──────────────────────────────────
+  function handleDragEnter(e) {
+    e.preventDefault();
+    dragCountRef.current++;
+    setIsDragging(true);
+  }
+  function handleDragLeave(e) {
+    e.preventDefault();
+    dragCountRef.current--;
+    if (dragCountRef.current <= 0) { dragCountRef.current = 0; setIsDragging(false); }
+  }
+  function handleDragOver(e) { e.preventDefault(); }
+  function handleDrop(e) {
+    e.preventDefault();
+    dragCountRef.current = 0;
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (TEXT_EXTS.has(ext)) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setAttachedFile({ name: file.name, content: ev.target.result, size: file.size, isText: true });
+      reader.readAsText(file);
+    } else {
+      setAttachedFile({ name: file.name, content: null, size: file.size, isText: false });
+    }
+  }
+
   async function activateDemoMode() {
-    setDemoMode(true); setOllamaConnected(true);
+    setDemoMode(true); setOllamaConnected(true); setActiveProvider('openai');
     setModels([{ name: 'llama3.2 (demo)', size: '2.0GB' }, { name: 'nomic-embed-text (demo)', size: '274MB' }]);
   }
 
@@ -225,22 +312,44 @@ export default function Chat() {
     try {
       const status = await checkOllamaStatus();
       setOllamaConnected(status.connected);
-      if (status.connected) { const data = await getModels(); setModels(data.models || []); }
+      if (status.connected) {
+        setActiveProvider(status.provider || null);
+        const data = await getModels();
+        setModels(data.models || []);
+      }
     } catch { setOllamaConnected(false); }
   }
 
   const handleSend = useCallback(async () => {
-    if (!input.trim() || isLoading || isStreaming) return;
+    if (!input.trim() && !attachedFile || isLoading || isStreaming) return;
+    if (!input.trim() && attachedFile && !attachedFile.isText) {
+      // Binary file with no message — prompt user
+      addMessage({ role: 'assistant', content: `To analyse **${attachedFile.name}**, use the Documents panel → ingest the file there, then ask me questions about it.`, isError: false });
+      setAttachedFile(null);
+      return;
+    }
     if (listening) { recognitionRef.current?.stop(); setListening(false); }
 
-    const userMessage = input.trim();
-    setInput('');
-    if (inputRef.current) inputRef.current.style.height = '40px';
-    addMessage({ role: 'user', content: userMessage });
+    let userMessage = input.trim();
 
+    // Prepend file context if attached
+    if (attachedFile?.isText && attachedFile.content) {
+      const preview = attachedFile.content.length > 8000
+        ? attachedFile.content.slice(0, 8000) + '\n… [truncated]'
+        : attachedFile.content;
+      userMessage = `📎 **${attachedFile.name}**\n\`\`\`\n${preview}\n\`\`\`\n\n${userMessage || 'Please analyse this file.'}`;
+    } else if (attachedFile && !attachedFile.isText) {
+      userMessage = `[Attached: ${attachedFile.name}] ${userMessage}`;
+    }
+
+    setInput('');
+    setAttachedFile(null);
+    if (inputRef.current) inputRef.current.style.height = '40px';
+
+    addMessage({ role: 'user', content: userMessage });
     const history = messages.map(m => ({ role: m.role, content: m.content }));
 
-    // Multi-agent workflow uses the non-streaming route (orchestrator needs full response)
+    // Multi-agent: non-streaming
     if (workflowMode === 'multi-agent') {
       setLoading(true);
       try {
@@ -270,62 +379,82 @@ export default function Chat() {
     abortStreamRef.current = sendChatStream(
       { message: userMessage, history, workingDirectory },
       {
-        onToken: (token) => {
-          accumulated += token;
-          setStreamContent(accumulated);
-        },
+        onToken: (token) => { accumulated += token; setStreamContent(accumulated); },
         onTool: (event) => {
-          if (event.status === 'running') {
-            setStreamTools(prev => [...new Set([...prev, event.name])]);
-          } else if (event.status === 'done') {
-            finalToolsUsed.push(event.name);
-          }
+          if (event.status === 'running') setStreamTools(prev => [...new Set([...prev, event.name])]);
+          else if (event.status === 'done') finalToolsUsed.push(event.name);
         },
         onDone: (event) => {
           if (event.isConfirmation) {
-            // Destructive action needs confirmation
             setPendingAction(event.pendingAction);
-            if (accumulated) {
-              addMessage({ role: 'assistant', content: accumulated, model: event.model });
-            } else {
-              addMessage({ role: 'assistant', content: event.message || 'Please confirm this action.', model: event.model });
-            }
+            addMessage({ role: 'assistant', content: accumulated || event.message || 'Please confirm this action.', model: event.model });
           } else {
             finalToolsUsed = event.toolsUsed || finalToolsUsed;
             finalModel     = event.model || finalModel;
-            addMessage({
-              role: 'assistant',
-              content: accumulated || 'No response',
-              model: finalModel,
-              toolsUsed: finalToolsUsed.length > 0 ? finalToolsUsed : undefined,
-            });
+            if (finalModel) setActiveProvider(finalModel.startsWith('gpt') ? 'openai' : 'ollama');
+            addMessage({ role: 'assistant', content: accumulated || 'No response', model: finalModel, toolsUsed: finalToolsUsed.length > 0 ? finalToolsUsed : undefined });
           }
-          setStreamContent('');
-          setStreamTools([]);
-          setIsStreaming(false);
-          abortStreamRef.current = null;
+          setStreamContent(''); setStreamTools([]); setIsStreaming(false); abortStreamRef.current = null;
         },
         onError: (err) => {
           addMessage({ role: 'assistant', content: `Error: ${err.message}`, isError: true });
-          setStreamContent('');
-          setStreamTools([]);
-          setIsStreaming(false);
-          abortStreamRef.current = null;
+          setStreamContent(''); setStreamTools([]); setIsStreaming(false); abortStreamRef.current = null;
         },
       }
     );
-  }, [input, isLoading, isStreaming, listening, messages, workingDirectory, workflowMode,
-      addMessage, setLoading, setPendingAction, setOllamaConnected, setDemoMode, setModels]);
+  }, [input, attachedFile, isLoading, isStreaming, listening, messages, workingDirectory, workflowMode,
+      addMessage, setLoading, setPendingAction, setActiveProvider]);
 
-  // Abort in-flight stream on unmount
   useEffect(() => () => { abortStreamRef.current?.(); }, []);
-
   function handleKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
 
   const isDisabled  = isLoading || isStreaming || (!ollamaConnected && !demoMode);
   const showWelcome = !ollamaConnected && !demoMode && messages.length === 0;
+
+  // ── Export handlers ──────────────────────────────────────────
+  const [exportOpen, setExportOpen] = useState(false);
+
+  function exportMarkdown() {
+    const lines = messages.map(m => {
+      const role = m.role === 'user' ? '**You**' : '**Vault AI**';
+      const time = m.timestamp ? new Date(m.timestamp).toLocaleString() : '';
+      return `### ${role}${time ? ` · ${time}` : ''}\n\n${m.content}\n`;
+    });
+    const md = `# Vault AI Chat Export\n_Exported ${new Date().toLocaleString()}_\n\n---\n\n${lines.join('\n---\n\n')}`;
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `vault-chat-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setExportOpen(false);
+  }
+
+  function exportHtmlPrint() {
+    const rows = messages.map(m => {
+      const isUser = m.role === 'user';
+      const time = m.timestamp ? new Date(m.timestamp).toLocaleString() : '';
+      return `<div class="msg ${isUser ? 'user' : 'ai'}">
+  <div class="role">${isUser ? 'You' : 'Vault AI'}${time ? `<span class="time">${time}</span>` : ''}</div>
+  <div class="body">${m.content.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br/>')}</div>
+</div>`;
+    }).join('\n');
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Vault AI Chat</title>
+<style>body{font-family:-apple-system,sans-serif;max-width:720px;margin:40px auto;padding:0 20px;color:#111}
+h1{font-size:18px;color:#4F46E5;margin-bottom:4px}.meta{font-size:12px;color:#9CA3AF;margin-bottom:24px}
+.msg{margin-bottom:20px;padding:14px 16px;border-radius:12px}.user{background:#EFF6FF;border:1px solid #BFDBFE}
+.ai{background:#F9FAFB;border:1px solid #E5E7EB}.role{font-size:12px;font-weight:700;margin-bottom:6px;color:#374151}
+.time{font-weight:400;color:#9CA3AF;margin-left:8px}.body{font-size:14px;line-height:1.6;white-space:pre-wrap}
+@media print{body{max-width:100%;margin:20px}}</style></head>
+<body><h1>🔒 Vault AI Chat Export</h1><p class="meta">Exported ${new Date().toLocaleString()}</p>${rows}</body></html>`;
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 400);
+    setExportOpen(false);
+  }
 
   const SUGGESTIONS = [
     'List all files in my home folder', 'Find all PDF files and summarize them',
@@ -337,14 +466,34 @@ export default function Chat() {
   ];
 
   return (
-    <div className="flex flex-col h-full">
+    <div
+      ref={chatAreaRef}
+      className={`flex flex-col h-full chat-drop-zone ${isDragging ? 'chat-drop-active' : ''}`}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {isDragging && (
+        <div className="drop-overlay">
+          <div className="drop-overlay-inner">
+            <PaperclipIcon size={32} />
+            <div className="drop-overlay-title">Drop file to attach</div>
+            <div className="drop-overlay-sub">Text, code, CSV, JSON and more</div>
+          </div>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="chat-toolbar flex items-center justify-between px-4 py-2 border-b">
-        <WorkflowToggle />
+        <div className="flex items-center gap-2">
+          <WorkflowToggle />
+          <PrivacyBadge provider={activeProvider} demoMode={demoMode} />
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {demoMode && (
-            <button onClick={() => { setDemoMode(false); setOllamaConnected(false); setModels([]); }} className="demo-exit-btn">
+            <button onClick={() => { setDemoMode(false); setOllamaConnected(false); setModels([]); setActiveProvider(null); }} className="demo-exit-btn">
               <ZapIcon size={11} /> DEMO MODE · Exit
             </button>
           )}
@@ -360,6 +509,27 @@ export default function Chat() {
               className="voice-btn" title="Stop generation">
               <XIcon size={12} /> Stop
             </button>
+          )}
+          {/* Export dropdown */}
+          {messages.length > 0 && (
+            <div className="export-wrap">
+              <button className="voice-btn" onClick={() => setExportOpen(v => !v)} title="Export chat">
+                <DownloadIcon size={12} /> Export
+              </button>
+              {exportOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setExportOpen(false)} />
+                  <div className="export-dropdown">
+                    <button className="export-option" onClick={exportMarkdown}>
+                      <FileTextIcon size={13} /> Download as Markdown
+                    </button>
+                    <button className="export-option" onClick={exportHtmlPrint}>
+                      <DownloadIcon size={13} /> Print / Save as PDF
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
           <MCPToolBadge tools={externalMCPTools} />
         </div>
@@ -378,7 +548,6 @@ export default function Chat() {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
 
-        {/* Welcome screen */}
         {showWelcome && (
           <div className="flex items-center justify-center h-full">
             <div className="max-w-lg text-center">
@@ -395,7 +564,6 @@ export default function Chat() {
           </div>
         )}
 
-        {/* Empty state home */}
         {!showWelcome && messages.length === 0 && !isStreaming && (
           <div style={{ padding: '24px 20px', overflowY: 'auto', height: '100%' }}>
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -434,17 +602,14 @@ export default function Chat() {
           </div>
         )}
 
-        {/* Messages */}
         {messages.map(msg => (
           <div key={msg.id}>
             {msg.workflow && <AgentWorkflowPanel workflow={msg.workflow} isRunning={false} />}
-            <MessageBubble message={msg} />
+            <MessageBubble message={msg} speakingId={speakingId} onSpeak={speak} />
           </div>
         ))}
 
-        {/* Live streaming bubble */}
         {isStreaming && <StreamingBubble content={streamContent} toolsRunning={streamTools} />}
-
         <div ref={messagesEndRef} />
       </div>
 
@@ -455,7 +620,43 @@ export default function Chat() {
         {listening && (
           <div className="listening-indicator"><span className="listening-dot" />Listening — speak now</div>
         )}
+
+        {/* Attached file chip */}
+        {attachedFile && (
+          <div className="attached-file-row">
+            <div className={`attached-file-chip ${attachedFile.isText ? '' : 'attached-file-chip-binary'}`}>
+              <FileTextIcon size={12} />
+              <span className="attached-file-name">{attachedFile.name}</span>
+              <span className="attached-file-size">{(attachedFile.size / 1024).toFixed(1)} KB</span>
+              {!attachedFile.isText && <span className="attached-file-warn">use Documents panel for binary files</span>}
+              <button onClick={() => setAttachedFile(null)} className="attached-file-remove">
+                <XIcon size={11} />
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2 items-end">
+          {/* File attach button */}
+          <label className="attach-btn" title="Attach file (or drag & drop)">
+            <input type="file" style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const ext = '.' + file.name.split('.').pop().toLowerCase();
+                if (TEXT_EXTS.has(ext)) {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => setAttachedFile({ name: file.name, content: ev.target.result, size: file.size, isText: true });
+                  reader.readAsText(file);
+                } else {
+                  setAttachedFile({ name: file.name, content: null, size: file.size, isText: false });
+                }
+                e.target.value = '';
+              }}
+            />
+            <PaperclipIcon size={17} />
+          </label>
+
           <textarea
             ref={inputRef}
             value={input}
@@ -464,8 +665,9 @@ export default function Chat() {
             placeholder={
               listening      ? 'Listening...' :
               isStreaming    ? 'Generating…'  :
-              demoMode       ? 'Try demo: "List files", "Scan for PII", "Summarize documents"...' :
-              ollamaConnected ? 'Ask about your files...' : 'Launch Demo Mode or start Ollama'
+              attachedFile   ? `Ask about ${attachedFile.name}…` :
+              demoMode       ? 'Try: "List files", "Scan for PII", "Summarize"… or drop a file' :
+              ollamaConnected ? 'Ask about your files… or drop a file here' : 'Launch Demo Mode or start Ollama'
             }
             disabled={isDisabled}
             rows={1}
@@ -479,11 +681,12 @@ export default function Chat() {
               {listening ? <MicOffIcon size={18} /> : <MicIcon size={18} />}
             </button>
           )}
-          <button onClick={handleSend} disabled={!input.trim() || isDisabled}
+          <button onClick={handleSend} disabled={(!input.trim() && !attachedFile) || isDisabled}
             className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0">
             <SendIcon size={18} />
           </button>
         </div>
+
         {demoMode && (
           <div className="demo-footer-note">
             Demo mode · AI responses simulated · <button onClick={() => window.open('https://ollama.com', '_blank')} className="demo-footer-link">Install Ollama for real AI</button>
